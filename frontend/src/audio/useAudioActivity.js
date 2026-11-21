@@ -39,6 +39,11 @@ export default function useAudioActivity() {
     setObservation(unavailableObservation("idle"));
   }, [stopResources]);
 
+  const getStream = useCallback(
+    () => resourcesRef.current?.stream ?? null,
+    [],
+  );
+
   const enableMicrophone = useCallback(async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setObservation(
@@ -158,6 +163,7 @@ export default function useAudioActivity() {
   return {
     disableMicrophone,
     enableMicrophone,
+    getStream,
     observation,
     readiness,
   };

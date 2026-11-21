@@ -2,7 +2,7 @@
 
 A CPU-first adaptive interview-practice assistant built as an AI systems portfolio project. The project separates observable input processing, internal state, dialogue policy, and response generation so each decision can be tested without relying on one large model.
 
-The current milestone is a **React interview interface with opt-in local audio turn-taking cues and explainable answer-quality evidence**, backed by a stateless FastAPI service with optional Gemini structured reply generation. Perception, state updates, and dialogue actions remain deterministic and fully testable offline; vision is not implemented.
+The current milestone is a **React interview interface with local Faster-Whisper speech-to-text, audio turn-taking cues, and explainable answer-quality evidence**, backed by a stateless FastAPI service with optional Gemini reply generation. Dialogue policy and state updates remain deterministic and fully testable offline; vision is not implemented.
 
 ## Research question
 
@@ -16,7 +16,12 @@ The text baseline establishes the control condition for that future comparison.
 flowchart LR
     M[Opt-in microphone] --> N[Browser voice<br/>activity detection]
     N --> L
-    L[React interview UI] --> K[FastAPI transport]
+    M --> O[Explicit MediaRecorder<br/>voice answer]
+    O --> P[FastAPI bounded<br/>audio endpoint]
+    P --> Q[Faster-Whisper<br/>CPU int8]
+    Q --> R[Editable transcript]
+    R --> L
+    L[React interview UI] --> K[FastAPI text transport]
     K --> A[Candidate text]
     A --> B[Perception<br/>explicit requests]
     A --> C[Perception<br/>answer-quality evidence]
@@ -37,13 +42,13 @@ flowchart LR
 
 | Layer | Responsibility | Must not do |
 |---|---|---|
-| `perception` | Detect explicit control requests and observable answer evidence | Infer emotion, score the candidate, or choose the final action |
-| `cognitive` | Apply immutable session-state transitions | Extract text evidence, generate dialogue, or call an LLM |
+| `perception` | Detect explicit controls and answer evidence; transcribe explicit audio clips locally | Infer emotion, score the candidate, or choose the final action |
+| `cognitive` | Apply immutable session-state transitions | Extract evidence, generate dialogue, or call a model |
 | `reasoning` | Apply one documented policy, render local replies, and optionally request one structured Gemini reply | Allow Gemini to change an action, reason, or state |
-| `service` | Orchestrate one turn in a fixed order and expose reply source/fallback metadata | Persist transcripts or duplicate policy rules |
-| `api` | Validate HTTP requests and delegate one turn to `InterviewService` | Store sessions, duplicate policy, or expose internal errors |
-| `frontend` | Keep the session in memory, derive local voice-activity turn cues, and display conversation evidence | Reimplement dialogue policy, persist media, transcribe audio, or infer psychological state |
-| `eval` | Exercise the domain service directly in local mode | Start FastAPI, a browser, or Gemini |
+| `service` | Orchestrate one text turn and expose reply source/fallback metadata | Persist transcripts or duplicate policy rules |
+| `api` | Validate text requests and bounded audio streams, then delegate to the correct local component | Store sessions or media, duplicate policy, or expose internal errors |
+| `frontend` | Keep the session in memory, derive voice-activity cues, and record only explicit voice answers | Auto-submit transcripts, persist media, or infer psychological state |
+| `eval` | Exercise deterministic domain and timing behavior | Start Gemini or claim human validity from fixtures |
 
 Control and answer precedence is:
 
@@ -76,6 +81,7 @@ Use official CPython 3.11 or newer and Node.js 22 or newer. Install and verify t
 ```powershell
 py -3.14 -m venv .venv
 .venv\Scripts\python -m pip install -r requirements-dev.txt
+.venv\Scripts\python -m pip install -r backend/requirements-stt.txt
 .venv\Scripts\python -m pytest -q
 .venv\Scripts\python -m eval.run_cases
 .venv\Scripts\python -m eval.answer_quality_evaluation --enforce-target
@@ -97,6 +103,20 @@ npm run dev
 ```
 
 Open `http://127.0.0.1:5173`. To use a different backend URL, copy `frontend/.env.example` to `frontend/.env` and change `VITE_API_BASE_URL`.
+
+### Local speech-to-text
+
+`backend/requirements-stt.txt` installs Faster-Whisper 1.2.1 and pins PyAV below 19 because that Faster-Whisper release still calls the pre-19 `av.open` API. Defaults are CPU `int8`, English `base.en`, and a 60-second decoded-audio limit:
+
+```powershell
+$env:WHISPER_MODEL = "base.en"
+$env:WHISPER_DEVICE = "cpu"
+$env:WHISPER_COMPUTE_TYPE = "int8"
+$env:WHISPER_LANGUAGE = "en"
+$env:WHISPER_MAX_AUDIO_SECONDS = "60"
+```
+
+The first transcription downloads model weights from Hugging Face and loads them lazily. Later requests use the local cache. Model weights may persist in the Hugging Face cache; candidate audio does not. The project reads process environment variables and does not silently load `.env`.
 
 ### Optional Gemini replies
 
@@ -122,6 +142,7 @@ The API is stateless. Clients send the current `SessionState` with every turn an
 |---|---|---|
 | `GET` | `/health` | Returns `{\"status\":\"ok\"}` without invoking the model |
 | `POST` | `/v1/interview/turn` | Runs one deterministic interview turn |
+| `POST` | `/v1/audio/transcriptions` | Transcribes a bounded raw WebM, Ogg, MP4, FLAC, or WAV body locally |
 | `GET` | `/docs` | Interactive OpenAPI documentation |
 
 Example request:
@@ -146,24 +167,27 @@ The React client keeps session state and conversation history in memory only. It
 - a text interview flow across multiple turns;
 - an evidence and deterministic policy decision monitor;
 - visible `local`, `gemini`, and `local_fallback` reply sources;
+- explicit voice recording that appends a local transcript to the editable answer;
 - a reset action that discards the in-memory transcript and creates a new session;
 - an explicit API connectivity error without exposing backend internals.
 
 The UI does not infer or display stress, mood, focus, personality, or hiring suitability.
 
-## Audio turn-taking v1
+## Audio turn-taking and local speech-to-text
 
-Audio perception is optional and runs entirely in the browser after the user clicks **Enable microphone**. The Web Audio API samples signal energy and derives these observable fields:
+Audio remains optional and starts only after **Enable microphone**. The Web Audio API continuously derives observable voice-activity timing in the browser: microphone availability, current speech-like activity, cumulative speech duration, and trailing silence. It does not retain those samples.
 
-- microphone `availability`;
-- whether any speech-like activity has been observed;
-- whether activity is present now;
-- cumulative speech-activity duration;
-- trailing silence duration.
+The readiness policy distinguishes `speaking`, `listening`, `thinking_pause`, and `ready`. A pause shorter than 1.6 seconds remains `thinking_pause`. This timing cue never submits text or changes a dialogue action.
 
-The local readiness policy distinguishes `speaking`, `listening`, `thinking_pause`, and `ready`. A pause shorter than 1.6 seconds remains `thinking_pause`; it does not mark the turn complete. The cue is advisory: it never submits text, changes a dialogue action, or overrides the manual **Send answer** control.
+Speech-to-text is a separate, explicit path:
 
-The browser does not record, transcribe, upload, or persist audio. Energy-based activity detection can react to environmental noise and must not be interpreted as emotion, focus, confusion, or speaking quality.
+1. **Start voice answer** starts `MediaRecorder` on the already-consented microphone stream.
+2. **Stop and transcribe** sends the clip only to `127.0.0.1` FastAPI.
+3. FastAPI accepts WebM, Ogg, MP4, FLAC, or WAV; rejects bodies above 10 MiB; and keeps accepted bytes in an in-memory stream.
+4. Faster-Whisper decodes the clip, rejects decoded audio above 60 seconds, and transcribes with CPU `int8` by default.
+5. The transcript is appended to **Your answer** for review and editing. Only **Send answer** starts an interview turn.
+
+The backend serializes model inference to avoid concurrent CPU and memory spikes. Errors such as unsupported media, silence, missing runtime, or model failure are returned as safe status messages; text input remains available.
 
 ## Evaluation
 
@@ -263,15 +287,27 @@ The deterministic selection rule chooses 1,600 ms. On held-out traces it detects
 
 The runner writes `eval/results/audio-latest.json`. These traces are synthetic engineering fixtures, not evidence of human conversational validity or cross-speaker generalization. A consented multi-speaker pilot is required before making portfolio performance claims.
 
+### Local STT smoke
+
+The real adapter and HTTP endpoint were manually exercised on Faster-Whisper's public 11-second `jfk.flac` fixture with `tiny.en`, CPU `int8`, and Python 3.14. Both produced the expected JFK sentence.
+
+| Smoke path | Audio duration | Reported processing time |
+|---|---:|---:|
+| Cold adapter, including initial model acquisition/loading | 11,000 ms | 13,751 ms |
+| HTTP endpoint with cached model | 11,000 ms | 1,663 ms |
+
+This single English sample is an integration smoke check, not a WER or latency benchmark; the default `base.en` model and other hardware will differ.
+
 ## Privacy and scientific boundaries
 
 - Candidate text is processed in memory and is not stored in `SessionState` or default logs.
 - Gemini receives candidate text only when an API key is configured, the generator is explicitly injected, and the selected action is eligible. Review Google's data handling terms before using real interview content.
-- Logs contain reply source and fallback reason only, not candidate text, prompts, response bodies, API keys, or exception messages.
-- Raw audio is sampled in memory for voice activity only; it is not recorded, transcribed, uploaded, logged, or persisted.
-- Microphone access requires an explicit button click and browser permission. Denial leaves the complete text workflow available.
+- Logs contain reply source and fallback reason only, not candidate text, prompts, response bodies, API keys, audio, or exception messages.
+- Voice-activity samples remain in browser memory and are never recorded by the timing path.
+- Voice-answer recording requires a separate explicit click. The clip is sent only to local FastAPI, bounded by size and decoded duration, processed in memory, and not persisted.
+- Microphone denial or transcription failure leaves the complete text workflow available.
 - Missing audio is represented as `unavailable`, never as silence or a neutral psychological state.
-- Text heuristics, audio energy, and future facial blendshapes do **not** measure stress, focus, mood, honesty, personality, competence, or hiring suitability.
+- Text heuristics, audio energy, transcripts, and future facial blendshapes do **not** measure stress, focus, mood, honesty, personality, competence, or hiring suitability.
 - Vision has not been implemented. It remains an optional experiment that must demonstrate measurable value before inclusion.
 
 Gemini generates wording only. Local policy retains ownership of `action`, `reason`, `followup_topic`, and all state transitions; control actions remain local even when Gemini is configured.
