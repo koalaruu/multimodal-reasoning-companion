@@ -1,4 +1,4 @@
-"""FastAPI composition root for the text interview API."""
+"""FastAPI composition root for the local multimodal interview API."""
 
 from __future__ import annotations
 
@@ -6,6 +6,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.routes import router
+from backend.app.perception.speech_to_text import (
+    AudioTranscriber,
+    FasterWhisperTranscriber,
+)
 from backend.app.reasoning.llm_agent import GeminiReplyGenerator
 from backend.app.service import InterviewService
 
@@ -15,13 +19,17 @@ _ALLOWED_ORIGINS = (
 )
 
 
-def create_app(interview_service: InterviewService | None = None) -> FastAPI:
+def create_app(
+    interview_service: InterviewService | None = None,
+    audio_transcriber: AudioTranscriber | None = None,
+) -> FastAPI:
     app = FastAPI(
         title="Multimodal Reasoning Companion API",
         version="0.1.0",
         description=(
-            "Stateless text interview API with deterministic dialogue policy "
-            "and optional Gemini reply rendering."
+            "Stateless interview API with deterministic dialogue policy, "
+            "optional local Faster-Whisper transcription, and optional Gemini "
+            "reply rendering."
         ),
     )
     app.state.interview_service = (
@@ -30,6 +38,11 @@ def create_app(interview_service: InterviewService | None = None) -> FastAPI:
         else InterviewService(
             reply_generator=GeminiReplyGenerator.from_env()
         )
+    )
+    app.state.audio_transcriber = (
+        audio_transcriber
+        if audio_transcriber is not None
+        else FasterWhisperTranscriber.from_env()
     )
     app.add_middleware(
         CORSMiddleware,

@@ -465,6 +465,17 @@ dd {
   line-height: 1.5;
 }
 
+.audio-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.audio-actions button {
+  width: 100%;
+}
+
 .audio-readout {
   display: grid;
   gap: 10px;
@@ -516,6 +527,47 @@ dd {
 .audio-state small {
   margin-top: 2px;
   color: #7a8580;
+  font-size: 0.67rem;
+}
+
+.voice-state {
+  padding: 8px 10px;
+  border-radius: 9px;
+  color: #536159;
+  background: #eef2ef;
+}
+
+.voice-state.recording {
+  color: #7b3f34;
+  background: #f9e9e5;
+}
+
+.voice-state.transcribing {
+  color: #75571d;
+  background: #f8efd9;
+}
+
+.voice-state.ready {
+  color: #2d694e;
+  background: #e7f4ec;
+}
+
+.voice-state.error {
+  color: #7a3c2d;
+  background: #fff2ec;
+}
+
+.voice-state strong,
+.voice-state small {
+  display: block;
+}
+
+.voice-state strong {
+  font-size: 0.75rem;
+}
+
+.voice-state small {
+  margin-top: 3px;
   font-size: 0.67rem;
 }
 

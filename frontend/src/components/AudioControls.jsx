@@ -1,3 +1,11 @@
+const VOICE_LABELS = {
+  idle: "Voice answer ready",
+  recording: "Recording voice answer",
+  transcribing: "Transcribing locally",
+  ready: "Transcript added to Your answer",
+  error: "Voice transcription unavailable",
+};
+
 function formatDuration(milliseconds) {
   if (milliseconds == null) return "Not observed";
   return `${(milliseconds / 1_000).toFixed(1)} s`;
@@ -8,33 +16,58 @@ export default function AudioControls({
   readiness,
   onEnable,
   onDisable,
+  onStartRecording,
+  onStopAndTranscribe,
+  voiceDisabled,
+  voiceError,
+  voiceResult,
+  voiceStatus,
 }) {
   const enabled = observation.availability === "available";
   const requesting = observation.permission === "requesting";
+  const recording = voiceStatus === "recording";
+  const transcribing = voiceStatus === "transcribing";
 
   return (
     <section className="audio-panel" aria-labelledby="audio-heading">
       <div className="audio-summary">
         <div>
-          <p className="eyebrow">Optional audio perception</p>
-          <h2 id="audio-heading">Turn-taking cue</h2>
+          <p className="eyebrow">Optional local audio</p>
+          <h2 id="audio-heading">Turn-taking and voice answer</h2>
           <p>
-            Local voice activity only. Audio is not transcribed, uploaded, or
-            stored. Manual Send remains authoritative.
+            Voice activity stays in the browser. An explicit voice recording is
+            sent only to local FastAPI, transcribed in memory, and never submits
+            an answer automatically.
           </p>
         </div>
-        <button
-          className={enabled ? "secondary-button" : "primary-button"}
-          type="button"
-          onClick={enabled ? onDisable : onEnable}
-          disabled={requesting}
-        >
-          {requesting
-            ? "Requesting permission..."
-            : enabled
-              ? "Stop microphone"
-              : "Enable microphone"}
-        </button>
+        <div className="audio-actions">
+          <button
+            className={enabled ? "secondary-button" : "primary-button"}
+            type="button"
+            onClick={enabled ? onDisable : onEnable}
+            disabled={requesting}
+          >
+            {requesting
+              ? "Requesting permission..."
+              : enabled
+                ? "Stop microphone"
+                : "Enable microphone"}
+          </button>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={recording ? onStopAndTranscribe : onStartRecording}
+            disabled={
+              !enabled || transcribing || (voiceDisabled && !recording)
+            }
+          >
+            {recording
+              ? "Stop and transcribe"
+              : transcribing
+                ? "Transcribing..."
+                : "Start voice answer"}
+          </button>
+        </div>
       </div>
 
       <div className="audio-readout" aria-live="polite">
@@ -48,6 +81,16 @@ export default function AudioControls({
                 : "Text interview controls remain available."}
             </small>
           </div>
+        </div>
+        <div className={`voice-state ${voiceStatus}`}>
+          <strong>{VOICE_LABELS[voiceStatus] ?? VOICE_LABELS.idle}</strong>
+          {voiceResult && (
+            <small>
+              {formatDuration(voiceResult.audio_duration_ms)} audio in{" "}
+              {formatDuration(voiceResult.processing_duration_ms)} using{" "}
+              {voiceResult.model}
+            </small>
+          )}
         </div>
         <div className="level-meter" aria-label="Current microphone activity">
           <span style={{ width: `${Math.round(observation.level * 100)}%` }} />
@@ -68,9 +111,9 @@ export default function AudioControls({
         </dl>
       </div>
 
-      {observation.error && (
+      {(observation.error || voiceError) && (
         <p className="audio-error" role="status">
-          {observation.error}
+          {observation.error || voiceError}
         </p>
       )}
     </section>

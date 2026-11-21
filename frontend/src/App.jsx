@@ -1,5 +1,6 @@
 import { useState } from "react";
 import useAudioActivity from "./audio/useAudioActivity.js";
+import useVoiceTranscription from "./audio/useVoiceTranscription.js";
 import AudioControls from "./components/AudioControls.jsx";
 import ChatBox from "./components/ChatBox.jsx";
 import DecisionMonitor from "./components/DecisionMonitor.jsx";
@@ -31,10 +32,19 @@ export default function App() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const audio = useAudioActivity();
+  const voice = useVoiceTranscription({
+    getStream: audio.getStream,
+    onTranscript: (transcript) => {
+      setDraft((current) =>
+        [current.trim(), transcript.trim()].filter(Boolean).join(" "),
+      );
+    },
+  });
 
   const ended = session.status === "ended";
 
   async function handleSubmit(answer) {
+    voice.cancel();
     const userMessage = {
       id: crypto.randomUUID(),
       role: "candidate",
@@ -73,7 +83,13 @@ export default function App() {
     }
   }
 
+  function handleDisableMicrophone() {
+    voice.cancel();
+    audio.disableMicrophone();
+  }
+
   function handleReset() {
+    voice.cancel();
     setSession(createSession());
     setMessages(initialMessages());
     setLatestResult(null);
@@ -110,7 +126,13 @@ export default function App() {
         observation={audio.observation}
         readiness={audio.readiness}
         onEnable={audio.enableMicrophone}
-        onDisable={audio.disableMicrophone}
+        onDisable={handleDisableMicrophone}
+        onStartRecording={voice.startRecording}
+        onStopAndTranscribe={voice.stopAndTranscribe}
+        voiceDisabled={sending || ended}
+        voiceError={voice.error}
+        voiceResult={voice.result}
+        voiceStatus={voice.status}
       />
 
 
@@ -133,7 +155,8 @@ export default function App() {
       </div>
 
       <footer>
-        Dialogue policy and voice activity stay local. Gemini may rewrite eligible replies only.
+        Dialogue policy, voice activity, and transcription stay local. Gemini may
+        rewrite eligible replies only.
       </footer>
     </main>
   );

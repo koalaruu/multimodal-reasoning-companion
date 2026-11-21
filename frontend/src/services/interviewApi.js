@@ -1,5 +1,5 @@
 const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000"
+  import.meta.env?.VITE_API_BASE_URL ?? "http://127.0.0.1:8000"
 ).replace(/\/$/, "");
 
 export async function submitInterviewTurn({ candidateInput, state, signal }) {
@@ -21,6 +21,41 @@ export async function submitInterviewTurn({ candidateInput, state, signal }) {
     result.updated_state == null
   ) {
     throw new Error("Interview service returned an invalid response.");
+  }
+  return result;
+}
+
+export async function transcribeAudio({ audio, signal }) {
+  const response = await fetch(`${API_BASE_URL}/v1/audio/transcriptions`, {
+    method: "POST",
+    headers: { "Content-Type": audio.type || "audio/webm" },
+    body: audio,
+    signal,
+  });
+
+  if (!response.ok) {
+    let message = `Transcription service rejected the audio (${response.status}).`;
+    try {
+      const errorBody = await response.json();
+      if (typeof errorBody?.detail?.message === "string") {
+        message = errorBody.detail.message;
+      }
+    } catch {
+      // Keep the status-only fallback for non-JSON failures.
+    }
+    throw new Error(message);
+  }
+
+  const result = await response.json();
+  if (
+    typeof result.text !== "string" ||
+    typeof result.language !== "string" ||
+    typeof result.language_probability !== "number" ||
+    typeof result.audio_duration_ms !== "number" ||
+    typeof result.processing_duration_ms !== "number" ||
+    typeof result.model !== "string"
+  ) {
+    throw new Error("Transcription service returned an invalid transcription response.");
   }
   return result;
 }
