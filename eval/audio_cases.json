@@ -1,0 +1,130 @@
+{
+  "schema_version": "audio-cases-v1",
+  "step_ms": 100,
+  "thresholds_ms": [800, 1200, 1600, 2000],
+  "acceptance": {
+    "max_false_ready_rate": 0.25,
+    "max_mean_detection_delay_ms": 2200
+  },
+  "cases": [
+    {
+      "id": "calibration_pause_900ms",
+      "split": "calibration",
+      "availability": "available",
+      "duration_ms": 7000,
+      "events": [
+        { "at_ms": 0, "speaking": true },
+        { "at_ms": 2000, "speaking": false },
+        { "at_ms": 2900, "speaking": true },
+        { "at_ms": 4400, "speaking": false }
+      ],
+      "ground_truth_turn_end_ms": 4400
+    },
+    {
+      "id": "calibration_pause_1400ms",
+      "split": "calibration",
+      "availability": "available",
+      "duration_ms": 7200,
+      "events": [
+        { "at_ms": 0, "speaking": true },
+        { "at_ms": 1800, "speaking": false },
+        { "at_ms": 3200, "speaking": true },
+        { "at_ms": 4500, "speaking": false }
+      ],
+      "ground_truth_turn_end_ms": 4500
+    },
+    {
+      "id": "calibration_completed_turn",
+      "split": "calibration",
+      "availability": "available",
+      "duration_ms": 5600,
+      "events": [
+        { "at_ms": 0, "speaking": true },
+        { "at_ms": 3000, "speaking": false }
+      ],
+      "ground_truth_turn_end_ms": 3000
+    },
+    {
+      "id": "calibration_no_speech",
+      "split": "calibration",
+      "availability": "available",
+      "duration_ms": 4000,
+      "events": [],
+      "ground_truth_turn_end_ms": null
+    },
+    {
+      "id": "calibration_microphone_unavailable",
+      "split": "calibration",
+      "availability": "unavailable",
+      "duration_ms": 3000,
+      "events": [],
+      "ground_truth_turn_end_ms": null
+    },
+    {
+      "id": "held_out_pause_1500ms",
+      "split": "held_out",
+      "availability": "available",
+      "duration_ms": 7600,
+      "events": [
+        { "at_ms": 0, "speaking": true },
+        { "at_ms": 2000, "speaking": false },
+        { "at_ms": 3500, "speaking": true },
+        { "at_ms": 5000, "speaking": false }
+      ],
+      "ground_truth_turn_end_ms": 5000
+    },
+    {
+      "id": "held_out_pause_1700ms",
+      "split": "held_out",
+      "availability": "available",
+      "duration_ms": 7600,
+      "events": [
+        { "at_ms": 0, "speaking": true },
+        { "at_ms": 2000, "speaking": false },
+        { "at_ms": 3700, "speaking": true },
+        { "at_ms": 5000, "speaking": false }
+      ],
+      "ground_truth_turn_end_ms": 5000
+    },
+    {
+      "id": "held_out_completed_turn",
+      "split": "held_out",
+      "availability": "available",
+      "duration_ms": 4600,
+      "events": [
+        { "at_ms": 0, "speaking": true },
+        { "at_ms": 1800, "speaking": false }
+      ],
+      "ground_truth_turn_end_ms": 1800
+    },
+    {
+      "id": "held_out_noise_after_answer",
+      "split": "held_out",
+      "availability": "available",
+      "duration_ms": 5800,
+      "events": [
+        { "at_ms": 0, "speaking": true },
+        { "at_ms": 2500, "speaking": false },
+        { "at_ms": 3200, "speaking": true },
+        { "at_ms": 3300, "speaking": false }
+      ],
+      "ground_truth_turn_end_ms": 2500
+    },
+    {
+      "id": "held_out_no_speech",
+      "split": "held_out",
+      "availability": "available",
+      "duration_ms": 4200,
+      "events": [],
+      "ground_truth_turn_end_ms": null
+    },
+    {
+      "id": "held_out_microphone_unavailable",
+      "split": "held_out",
+      "availability": "unavailable",
+      "duration_ms": 3200,
+      "events": [],
+      "ground_truth_turn_end_ms": null
+    }
+  ]
+}
