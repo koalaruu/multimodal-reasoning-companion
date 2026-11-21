@@ -51,6 +51,12 @@ jobs:
         working-directory: frontend
         run: npm test
 
+      - name: Test audio turn evaluator
+        run: node --test eval/audio_evaluation.test.js
+
+      - name: Run audio turn evaluation
+        run: node eval/run_audio_cases.js
+
       - name: Build frontend
         working-directory: frontend
         run: npm run build

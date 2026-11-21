@@ -162,6 +162,8 @@ The browser does not record, transcribe, upload, or persist audio. Energy-based 
 
 ## Evaluation
 
+### Dialogue smoke evaluation
+
 `eval/cases.json` contains five initial interview scenarios:
 
 1. explicit hint request;
@@ -214,6 +216,26 @@ It writes `eval/results/latest.json` with this shape:
 ```
 
 The five cases are a smoke evaluation, not evidence of robustness, scientific validity, multilingual performance, or generalization.
+
+### Audio turn evaluation
+
+`eval/audio_cases.json` contains separate synthetic `calibration` and `held_out` timing traces sampled at 100 ms. Calibration selects the threshold with the fewest false-ready cases, then the lowest mean end-detection delay. Held-out traces are never used for threshold selection.
+
+```powershell
+node --test eval/audio_evaluation.test.js
+node eval/run_audio_cases.js
+```
+
+| Threshold | Calibration false-ready rate | Calibration mean delay | Held-out false-ready rate | Held-out mean delay |
+|---:|---:|---:|---:|---:|
+| 800 ms | 66.67% | 800 ms | 50% | 1,000 ms |
+| 1,200 ms | 33.33% | 1,200 ms | 50% | 1,400 ms |
+| **1,600 ms** | **0%** | **1,600 ms** | **25%** | **1,800 ms** |
+| 2,000 ms | 0% | 2,000 ms | 0% | 2,200 ms |
+
+The deterministic selection rule chooses 1,600 ms. On held-out traces it detects every completed turn, handles unavailable/no-speech cases correctly, and exposes one known failure: a candidate who resumes after a 1,700 ms thinking pause is marked ready 100 ms too early. The acceptance gate allows at most a 25% false-ready rate and 2,200 ms mean delay, so the current pilot passes without hiding that failed case.
+
+The runner writes `eval/results/audio-latest.json`. These traces are synthetic engineering fixtures, not evidence of human conversational validity or cross-speaker generalization. A consented multi-speaker pilot is required before making portfolio performance claims.
 
 ## Privacy and scientific boundaries
 
