@@ -1,4 +1,6 @@
 import { useState } from "react";
+import useAudioActivity from "./audio/useAudioActivity.js";
+import AudioControls from "./components/AudioControls.jsx";
 import ChatBox from "./components/ChatBox.jsx";
 import DecisionMonitor from "./components/DecisionMonitor.jsx";
 import { submitInterviewTurn } from "./services/interviewApi.js";
@@ -28,6 +30,7 @@ export default function App() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const audio = useAudioActivity();
 
   const ended = session.status === "ended";
 
@@ -77,6 +80,7 @@ export default function App() {
     setDraft("");
     setError("");
     setSending(false);
+    audio.disableMicrophone();
   }
 
   return (
@@ -102,6 +106,13 @@ export default function App() {
           <span>{error}</span>
         </div>
       )}
+      <AudioControls
+        observation={audio.observation}
+        readiness={audio.readiness}
+        onEnable={audio.enableMicrophone}
+        onDisable={audio.disableMicrophone}
+      />
+
 
       <div className="workspace">
         <ChatBox
@@ -116,11 +127,13 @@ export default function App() {
           result={latestResult}
           session={session}
           onReset={handleReset}
+          audioObservation={audio.observation}
+          audioReadiness={audio.readiness}
         />
       </div>
 
       <footer>
-        Dialogue policy stays local. Gemini may rewrite eligible replies only.
+        Dialogue policy and voice activity stay local. Gemini may rewrite eligible replies only.
       </footer>
     </main>
   );
