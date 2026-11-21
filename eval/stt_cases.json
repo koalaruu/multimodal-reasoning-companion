@@ -1,0 +1,64 @@
+{
+  "schema_version": "stt-eval-v1",
+  "source": {
+    "repository": "SYSTRAN/faster-whisper",
+    "commit": "6cb639e70786aea42b9233006ae60eaf07190bdb",
+    "note": "Public upstream test fixtures are downloaded to an ignored local cache and are not redistributed by this repository."
+  },
+  "model": {
+    "name": "base.en",
+    "device": "cpu",
+    "compute_type": "int8",
+    "language": "en",
+    "max_audio_seconds": 60
+  },
+  "acceptance": {
+    "min_held_out_success_rate": 1.0,
+    "max_held_out_corpus_wer": 0.2,
+    "max_held_out_mean_rtf": 1.0
+  },
+  "assets": [
+    {
+      "id": "jfk",
+      "filename": "jfk.flac",
+      "url": "https://raw.githubusercontent.com/SYSTRAN/faster-whisper/6cb639e70786aea42b9233006ae60eaf07190bdb/tests/data/jfk.flac",
+      "sha256": "63a4b1e4c1dc655ac70961ffbf518acd249df237e5a0152faae9a4a836949715",
+      "size_bytes": 1152693,
+      "media_type": "audio/flac"
+    },
+    {
+      "id": "stereo_diarization",
+      "filename": "stereo_diarization.wav",
+      "url": "https://raw.githubusercontent.com/SYSTRAN/faster-whisper/6cb639e70786aea42b9233006ae60eaf07190bdb/tests/data/stereo_diarization.wav",
+      "sha256": "e882e9639fbd6a03a32c01ac2e92977d350f7bc5351d6a5a39859d0e6f481341",
+      "size_bytes": 320044,
+      "media_type": "audio/wav"
+    }
+  ],
+  "cases": [
+    {
+      "id": "calibration_jfk",
+      "split": "calibration",
+      "speaker_id": "john_f_kennedy",
+      "asset_id": "jfk",
+      "channel": "mono",
+      "reference": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
+    },
+    {
+      "id": "held_out_stereo_left",
+      "split": "held_out",
+      "speaker_id": "librivox_left_reader",
+      "asset_id": "stereo_diarization",
+      "channel": "left",
+      "reference": "He began a confused complaint against the wizard, who had vanished behind the curtain on the left."
+    },
+    {
+      "id": "held_out_stereo_right",
+      "split": "held_out",
+      "speaker_id": "librivox_right_reader",
+      "asset_id": "stereo_diarization",
+      "channel": "right",
+      "reference": "The horizon seems extremely distant."
+    }
+  ]
+}

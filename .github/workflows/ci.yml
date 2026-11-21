@@ -46,6 +46,9 @@ jobs:
       - name: Enforce answer-quality benchmark
         run: python -m eval.answer_quality_evaluation --enforce-target
 
+      - name: Validate STT benchmark manifest
+        run: python -m eval.run_stt_cases --validate-only
+
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
