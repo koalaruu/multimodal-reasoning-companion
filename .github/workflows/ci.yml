@@ -43,6 +43,9 @@ jobs:
           GEMINI_API_KEY: ""
         run: python -m eval.run_cases
 
+      - name: Validate answer-quality benchmark
+        run: python -m eval.answer_quality_evaluation
+
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
