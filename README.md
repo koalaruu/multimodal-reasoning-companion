@@ -287,16 +287,35 @@ The deterministic selection rule chooses 1,600 ms. On held-out traces it detects
 
 The runner writes `eval/results/audio-latest.json`. These traces are synthetic engineering fixtures, not evidence of human conversational validity or cross-speaker generalization. A consented multi-speaker pilot is required before making portfolio performance claims.
 
-### Local STT smoke
+### Local STT benchmark
 
-The real adapter and HTTP endpoint were manually exercised on Faster-Whisper's public 11-second `jfk.flac` fixture with `tiny.en`, CPU `int8`, and Python 3.14. Both produced the expected JFK sentence.
+`eval/stt_cases.json` pins two public Faster-Whisper test assets to upstream commit `6cb639e70786aea42b9233006ae60eaf07190bdb`, exact byte sizes, and SHA-256 hashes. Assets are downloaded into ignored `eval/cache/stt/`; this repository does not redistribute them. One JFK speaker is calibration data. Two distinct mono reader channels from the stereo fixture are held out, so speaker IDs do not cross splits.
 
-| Smoke path | Audio duration | Reported processing time |
-|---|---:|---:|
-| Cold adapter, including initial model acquisition/loading | 11,000 ms | 13,751 ms |
-| HTTP endpoint with cached model | 11,000 ms | 1,663 ms |
+```powershell
+# Contract and speaker-split validation only; no model or audio download
+python -m eval.run_stt_cases --validate-only
 
-This single English sample is an integration smoke check, not a WER or latency benchmark; the default `base.en` model and other hardware will differ.
+# Report-only real benchmark
+python -m eval.run_stt_cases
+
+# Fail when the fixed held-out target is missed
+python -m eval.run_stt_cases --enforce-target
+```
+
+Transcript normalization applies Unicode NFKC, case folding, punctuation removal, and whitespace collapse. Word Error Rate is `(substitutions + deletions + insertions) / reference words`. Real-Time Factor is `processing duration / audio duration`; values below `1.0` are faster than real time. Failed cases count all reference words as errors, so failures cannot disappear from aggregate WER.
+
+The target was fixed before the first held-out run: 100% held-out success, corpus WER at most 0.20, and mean warm RTF at most 1.0. The observed `base.en`, CPU `int8`, Python 3.14 baseline on this Windows AMD64 workstation was:
+
+| Split/case | Audio | Processing | WER | RTF |
+|---|---:|---:|---:|---:|
+| Calibration JFK, first request including model acquisition/loading | 11,000 ms | 21,182 ms | 0.0000 | 1.9256 |
+| Held-out left reader, warm | 5,000 ms | 646 ms | 0.0000 | 0.1292 |
+| Held-out right reader, warm | 5,000 ms | 597 ms | 0.0000 | 0.1194 |
+| **Held-out aggregate** | — | **622 ms mean** | **0.0000 corpus** | **0.1243 mean** |
+
+Target status: **PASS**. The runner writes `eval/results/stt-latest.json` with hypotheses, per-case metrics, runtime metadata, and safe failure categories.
+
+Three clean English public fixtures are integration evidence only. They do not establish performance on interview answers, microphones, accents, background noise, multilingual speech, or unseen datasets. A larger consented speaker-disjoint corpus is required before publishing portfolio accuracy claims.
 
 ## Privacy and scientific boundaries
 

@@ -2,6 +2,7 @@
 __pycache__/
 .pytest_cache/
 eval/results/*.json
+eval/cache/
 .env
 frontend/.env
 frontend/.env.local
