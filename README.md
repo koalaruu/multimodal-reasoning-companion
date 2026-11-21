@@ -2,7 +2,7 @@
 
 A CPU-first adaptive interview-practice assistant built as an AI systems portfolio project. The project separates observable input processing, internal state, dialogue policy, and response generation so each decision can be tested without relying on one large model.
 
-The current milestone is a **stateless FastAPI text service with optional Gemini structured reply generation**. Perception, state updates, and dialogue actions remain deterministic and fully testable offline; audio, vision, and React are not implemented yet.
+The current milestone is a **React text interview interface backed by a stateless FastAPI service with optional Gemini structured reply generation**. Perception, state updates, and dialogue actions remain deterministic and fully testable offline; audio and vision are not implemented yet.
 
 ## Research question
 
@@ -14,7 +14,8 @@ The text baseline establishes the control condition for that future comparison.
 
 ```mermaid
 flowchart LR
-    K[FastAPI transport] --> A[Candidate text]
+    L[React interview UI] --> K[FastAPI transport]
+    K --> A[Candidate text]
     A --> B[Perception<br/>explicit requests]
     A --> C[Cognitive engine<br/>content evidence]
     B --> D[Deterministic<br/>dialogue policy]
@@ -29,6 +30,7 @@ flowchart LR
     H --> J
     I --> J
     J --> K
+    K --> L
 ```
 
 | Layer | Responsibility | Must not do |
@@ -38,6 +40,7 @@ flowchart LR
 | `reasoning` | Apply one documented policy, render local replies, and optionally request one structured Gemini reply | Allow Gemini to change an action, reason, or state |
 | `service` | Orchestrate one turn in a fixed order and expose reply source/fallback metadata | Persist transcripts or duplicate policy rules |
 | `api` | Validate HTTP requests and delegate one turn to `InterviewService` | Store sessions, duplicate policy, or expose internal errors |
+| `frontend` | Keep the current session in memory and display conversation, evidence, and decision metadata | Reimplement policy, persist transcripts, or infer psychological state |
 | `eval` | Exercise the domain service directly in local mode | Start FastAPI, a browser, or Gemini |
 
 Control precedence is:
@@ -62,25 +65,30 @@ Every turn returns the extracted signals, content evidence, selected action and 
 
 ## Quickstart
 
-Use official CPython 3.11 or newer. On Windows:
+Use official CPython 3.11 or newer and Node.js 22 or newer. Install and verify the backend from the repository root:
 
 ```powershell
 py -3.14 -m venv .venv
 .venv\Scripts\python -m pip install -r requirements-dev.txt
 .venv\Scripts\python -m pytest -q
 .venv\Scripts\python -m eval.run_cases
+```
+
+Start FastAPI in the first terminal:
+
+```powershell
 .venv\Scripts\python -m uvicorn backend.app.main:app --reload
 ```
 
-On macOS or Linux:
+Start React in a second terminal:
 
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements-dev.txt
-.venv/bin/python -m pytest -q
-.venv/bin/python -m eval.run_cases
-.venv/bin/python -m uvicorn backend.app.main:app --reload
+```powershell
+cd frontend
+npm install
+npm run dev
 ```
+
+Open `http://127.0.0.1:5173`. To use a different backend URL, copy `frontend/.env.example` to `frontend/.env` and change `VITE_API_BASE_URL`.
 
 ### Optional Gemini replies
 
@@ -96,7 +104,7 @@ The FastAPI composition root reads these variables when the server starts and co
 
 An absent or blank key keeps local mode. Invalid timeout configuration fails at construction only when a key is present. Timeout, SDK error, malformed structured output, or invalid reply uses the exact local response and returns `reply_source="local_fallback"` with a machine-readable reason. There are no application-level retries.
 
-Run every command from the repository root.
+Run backend commands from the repository root and npm commands from `frontend/`.
 
 ## Text API
 
@@ -122,6 +130,18 @@ curl -X POST http://127.0.0.1:8000/v1/interview/turn \
 The response includes observable evidence, the local policy decision, updated state, reply, `reply_source`, and optional `fallback_reason`. Schema errors return HTTP `422`. Gemini failures still return HTTP `200` with the exact local reply and `reply_source=\"local_fallback\"`.
 
 Browser access is restricted to the local Vite origins `http://localhost:5173` and `http://127.0.0.1:5173`.
+
+## Text interview UI
+
+The React client keeps session state and conversation history in memory only. It provides:
+
+- a text interview flow across multiple turns;
+- an evidence and deterministic policy decision monitor;
+- visible `local`, `gemini`, and `local_fallback` reply sources;
+- a reset action that discards the in-memory transcript and creates a new session;
+- an explicit API connectivity error without exposing backend internals.
+
+The UI does not infer or display stress, mood, focus, personality, or hiring suitability.
 
 ## Evaluation
 
