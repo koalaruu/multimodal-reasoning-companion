@@ -28,6 +28,7 @@ _GEMINI_ACTIONS = frozenset(
         DialogueAction.OFFER_HINT,
         DialogueAction.ASK_FOLLOWUP,
         DialogueAction.CONTINUE_INTERVIEW,
+        DialogueAction.REQUEST_CLARIFICATION,
     }
 )
 _SYSTEM_INSTRUCTION = """You rewrite exactly one interviewer reply.
@@ -46,6 +47,7 @@ Rules:
 - For offer_hint: provide a useful hint without giving the full answer.
 - For ask_followup: ask one focused follow-up question related to followup_topic.
 - For continue_interview: acknowledge briefly and continue naturally.
+- For request_clarification: ask for a relevant project-and-evaluation answer without judging the candidate.
 - Do not include Markdown code fences.
 """
 

@@ -1,4 +1,4 @@
-"""Validate and report the answer-quality benchmark against the current baseline."""
+"""Validate and report the answer-quality benchmark against production."""
 
 from __future__ import annotations
 
@@ -130,35 +130,18 @@ def load_benchmark(path: Path = _DEFAULT_CASES_PATH) -> BenchmarkDocument:
     return BenchmarkDocument.model_validate_json(path.read_text(encoding="utf-8"))
 
 
-def _input_type(candidate_input: str, result: object) -> InputType:
-    if not candidate_input.strip():
-        return InputType.MISSING
-    signals = result.signals
-    if signals.hint_requested or signals.thinking_time_requested or signals.stop_requested:
-        return InputType.CONTROL
-    return InputType.ANSWER
-
-
-def _current_baseline_outcome(case: BenchmarkCase, service: InterviewService) -> dict:
+def _production_outcome(case: BenchmarkCase, service: InterviewService) -> dict:
     result = service.process_turn(
         SessionState(session_id=f"answer-quality-{case.id}"),
         case.candidate_input,
     )
-    input_type = _input_type(case.candidate_input, result)
     evidence = result.content_evidence
-    if input_type != InputType.ANSWER:
-        relevance = Relevance.NOT_APPLICABLE
-    elif evidence.project_mentioned or evidence.evaluation_mentioned:
-        relevance = Relevance.RELEVANT
-    else:
-        relevance = Relevance.UNCLEAR
-
     return {
-        "input_type": input_type.value,
-        "relevance": relevance.value,
-        "project_described": evidence.project_mentioned,
-        "evaluation_method_mentioned": evidence.evaluation_mentioned,
-        "evaluation_result_mentioned": False,
+        "input_type": evidence.input_type.value,
+        "relevance": evidence.relevance.value,
+        "project_described": evidence.project_described,
+        "evaluation_method_mentioned": evidence.evaluation_method_mentioned,
+        "evaluation_result_mentioned": evidence.evaluation_result_mentioned,
         "decision": {
             "action": result.decision.action.value,
             "followup_topic": result.decision.followup_topic.value,
@@ -192,7 +175,7 @@ def _evaluate_split(
     outcomes = []
     for case in cases:
         expected = case.expected.model_dump(mode="json")
-        actual = _current_baseline_outcome(case, service)
+        actual = _production_outcome(case, service)
         outcomes.append(
             {
                 "id": case.id,
@@ -208,7 +191,7 @@ def _evaluate_split(
 
 
 def evaluate_benchmark(document: BenchmarkDocument) -> dict:
-    """Measure the current keyword baseline without changing its policy."""
+    """Measure the production evidence extractor and deterministic policy."""
 
     service = InterviewService()
     calibration = _evaluate_split("calibration", document.calibration, service)
@@ -227,7 +210,7 @@ def evaluate_benchmark(document: BenchmarkDocument) -> dict:
     acceptance["passed"] = all(acceptance.values())
     return {
         "schema_version": "answer-quality-report-v1",
-        "system_under_test": "deterministic-keyword-baseline",
+        "system_under_test": "deterministic-answer-evidence-v1",
         "target": target,
         "summary": {
             "calibration": calibration_summary,

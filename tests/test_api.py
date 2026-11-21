@@ -75,6 +75,12 @@ def test_health_endpoint(client: TestClient) -> None:
             "explicit_stop_request",
             "none",
         ),
+        (
+            "ha test",
+            "request_clarification",
+            "answer_irrelevant",
+            "none",
+        ),
     ],
 )
 def test_interview_turn_exposes_policy_decision(
@@ -98,6 +104,24 @@ def test_interview_turn_exposes_policy_decision(
     assert body["updated_state"]["turn_index"] == 1
     assert body["reply_source"] == "local"
     assert body["fallback_reason"] is None
+
+def test_interview_turn_exposes_answer_quality_evidence(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/v1/interview/turn",
+        json=request_body(
+            "For my capstone, I trained a model. It reached 84% on unseen examples."
+        ),
+    )
+
+    assert response.status_code == 200
+    evidence = response.json()["content_evidence"]
+    assert evidence["input_type"] == "answer"
+    assert evidence["relevance"] == "relevant"
+    assert evidence["project_described"] is True
+    assert evidence["evaluation_method_mentioned"] is True
+    assert evidence["evaluation_result_mentioned"] is True
 
 
 @pytest.mark.parametrize(

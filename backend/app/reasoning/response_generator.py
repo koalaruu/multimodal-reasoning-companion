@@ -21,6 +21,10 @@ _REPLIES = {
     (DialogueAction.REQUEST_INPUT, FollowupTopic.NONE): (
         "Please share your answer when you're ready."
     ),
+    (DialogueAction.REQUEST_CLARIFICATION, FollowupTopic.NONE): (
+        "I couldn't connect that to the project yet. Please describe the AI "
+        "project you built and how you evaluated it."
+    ),
     (DialogueAction.CONTINUE_INTERVIEW, FollowupTopic.NONE): (
         "Thank you. That covers the project and its evaluation."
     ),

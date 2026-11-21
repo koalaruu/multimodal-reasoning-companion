@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from backend.app.cognitive.state_engine import (
-    apply_decision,
-    extract_content_evidence,
-)
+from backend.app.cognitive.state_engine import apply_decision
+from backend.app.perception.answer_quality import extract_answer_quality
 from backend.app.perception.text_signals import extract_explicit_signals
 from backend.app.reasoning.dialogue_policy import decide
 from backend.app.reasoning.llm_agent import (
@@ -28,8 +26,8 @@ class InterviewService:
         self, state: SessionState, candidate_input: str
     ) -> TurnResult:
         signals = extract_explicit_signals(candidate_input)
-        content_evidence = extract_content_evidence(candidate_input)
-        decision = decide(state, candidate_input, signals, content_evidence)
+        content_evidence = extract_answer_quality(candidate_input, signals)
+        decision = decide(state, signals, content_evidence)
         updated_state = apply_decision(state, decision)
         local_reply = generate_local_reply(decision)
         generated_reply = (

@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from backend.app.schemas import (
     ActionDecision,
+    AnswerRelevance,
     ContentEvidence,
     DecisionReason,
     DialogueAction,
     ExplicitSignals,
     FollowupTopic,
+    InputType,
     SessionState,
     SessionStatus,
 )
@@ -16,7 +18,6 @@ from backend.app.schemas import (
 
 def decide(
     state: SessionState,
-    text: str,
     signals: ExplicitSignals,
     evidence: ContentEvidence,
 ) -> ActionDecision:
@@ -42,10 +43,20 @@ def decide(
             action=DialogueAction.OFFER_HINT,
             reason=DecisionReason.EXPLICIT_HINT_REQUEST,
         )
-    if not text.strip():
+    if evidence.input_type == InputType.MISSING:
         return ActionDecision(
             action=DialogueAction.REQUEST_INPUT,
             reason=DecisionReason.INPUT_MISSING,
+        )
+    if evidence.relevance == AnswerRelevance.IRRELEVANT:
+        return ActionDecision(
+            action=DialogueAction.REQUEST_CLARIFICATION,
+            reason=DecisionReason.ANSWER_IRRELEVANT,
+        )
+    if evidence.relevance == AnswerRelevance.UNCLEAR:
+        return ActionDecision(
+            action=DialogueAction.REQUEST_CLARIFICATION,
+            reason=DecisionReason.ANSWER_UNCLEAR,
         )
     if (
         evidence.macro_f1_mentioned
@@ -57,7 +68,12 @@ def decide(
             reason=DecisionReason.CLASS_LEVEL_PERFORMANCE_MISSING,
             followup_topic=FollowupTopic.CLASS_LEVEL_PERFORMANCE,
         )
-    if evidence.project_mentioned and not evidence.evaluation_mentioned:
+    if not evidence.project_described:
+        return ActionDecision(
+            action=DialogueAction.REQUEST_CLARIFICATION,
+            reason=DecisionReason.PROJECT_EVIDENCE_MISSING,
+        )
+    if evidence.project_described and not evidence.evaluation_method_mentioned:
         return ActionDecision(
             action=DialogueAction.ASK_FOLLOWUP,
             reason=DecisionReason.EVALUATION_EVIDENCE_MISSING,

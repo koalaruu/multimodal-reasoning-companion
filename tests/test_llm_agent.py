@@ -68,6 +68,11 @@ def decision_for(action: DialogueAction) -> ActionDecision:
             action=action,
             reason=DecisionReason.ANSWER_COMPLETE,
         )
+    if action == DialogueAction.REQUEST_CLARIFICATION:
+        return ActionDecision(
+            action=action,
+            reason=DecisionReason.ANSWER_IRRELEVANT,
+        )
     if action == DialogueAction.WAIT:
         return ActionDecision(
             action=action,
@@ -90,6 +95,7 @@ def decision_for(action: DialogueAction) -> ActionDecision:
         DialogueAction.OFFER_HINT,
         DialogueAction.ASK_FOLLOWUP,
         DialogueAction.CONTINUE_INTERVIEW,
+        DialogueAction.REQUEST_CLARIFICATION,
     ],
 )
 def test_eligible_actions_use_structured_gemini_reply(
