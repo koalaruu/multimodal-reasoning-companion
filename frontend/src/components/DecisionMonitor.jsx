@@ -69,6 +69,16 @@ export default function DecisionMonitor({
 
       <section className="evidence-card">
         <h3>Observed evidence</h3>
+        <dl className="decision-grid">
+          <div>
+            <dt>Input type</dt>
+            <dd>{readable(evidence?.input_type)}</dd>
+          </div>
+          <div>
+            <dt>Answer relevance</dt>
+            <dd>{readable(evidence?.relevance)}</dd>
+          </div>
+        </dl>
         <ul className="evidence-list">
           <EvidenceItem label="Hint requested" active={signals?.hint_requested} />
           <EvidenceItem
@@ -78,11 +88,15 @@ export default function DecisionMonitor({
           <EvidenceItem label="Stop requested" active={signals?.stop_requested} />
           <EvidenceItem
             label="Project described"
-            active={evidence?.project_mentioned}
+            active={evidence?.project_described}
           />
           <EvidenceItem
-            label="Evaluation discussed"
-            active={evidence?.evaluation_mentioned}
+            label="Evaluation method mentioned"
+            active={evidence?.evaluation_method_mentioned}
+          />
+          <EvidenceItem
+            label="Evaluation result mentioned"
+            active={evidence?.evaluation_result_mentioned}
           />
           <EvidenceItem
             label="Macro-F1 mentioned"

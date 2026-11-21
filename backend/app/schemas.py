@@ -20,6 +20,7 @@ class DialogueAction(str, Enum):
     END_SESSION = "end_session"
     CONTINUE_INTERVIEW = "continue_interview"
     REQUEST_INPUT = "request_input"
+    REQUEST_CLARIFICATION = "request_clarification"
 
 
 class DecisionReason(str, Enum):
@@ -28,6 +29,9 @@ class DecisionReason(str, Enum):
     EXPLICIT_THINKING_TIME_REQUEST = "explicit_thinking_time_request"
     EXPLICIT_HINT_REQUEST = "explicit_hint_request"
     INPUT_MISSING = "input_missing"
+    ANSWER_IRRELEVANT = "answer_irrelevant"
+    ANSWER_UNCLEAR = "answer_unclear"
+    PROJECT_EVIDENCE_MISSING = "project_evidence_missing"
     CLASS_LEVEL_PERFORMANCE_MISSING = "class_level_performance_missing"
     EVALUATION_EVIDENCE_MISSING = "evaluation_evidence_missing"
     ANSWER_COMPLETE = "answer_complete"
@@ -63,12 +67,37 @@ class ExplicitSignals(DomainModel):
     stop_requested: bool = False
 
 
+class InputType(str, Enum):
+    ANSWER = "answer"
+    CONTROL = "control"
+    MISSING = "missing"
+
+
+class AnswerRelevance(str, Enum):
+    RELEVANT = "relevant"
+    IRRELEVANT = "irrelevant"
+    UNCLEAR = "unclear"
+    NOT_APPLICABLE = "not_applicable"
+
+
 class ContentEvidence(DomainModel):
-    project_mentioned: bool = False
-    evaluation_mentioned: bool = False
+    input_type: InputType
+    relevance: AnswerRelevance
+    project_described: bool = False
+    evaluation_method_mentioned: bool = False
+    evaluation_result_mentioned: bool = False
     macro_f1_mentioned: bool = False
     class_imbalance_mentioned: bool = False
     class_level_performance_mentioned: bool = False
+
+    @model_validator(mode="after")
+    def validate_relevance(self) -> "ContentEvidence":
+        answer_has_label = self.relevance != AnswerRelevance.NOT_APPLICABLE
+        if (self.input_type == InputType.ANSWER) != answer_has_label:
+            raise ValueError(
+                "only answer input may have an applicable relevance label"
+            )
+        return self
 
 
 class SessionState(DomainModel):

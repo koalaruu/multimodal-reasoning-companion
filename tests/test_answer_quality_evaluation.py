@@ -40,7 +40,7 @@ def test_duplicate_case_ids_are_rejected(tmp_path: Path) -> None:
         load_benchmark(duplicate_fixture)
 
 
-def test_current_baseline_report_is_complete_and_omits_candidate_text(
+def test_production_report_is_complete_and_omits_candidate_text(
     tmp_path: Path,
 ) -> None:
     document = load_benchmark()
@@ -48,7 +48,7 @@ def test_current_baseline_report_is_complete_and_omits_candidate_text(
     output = tmp_path / "report.json"
     write_report(report, output)
 
-    assert report["system_under_test"] == "deterministic-keyword-baseline"
+    assert report["system_under_test"] == "deterministic-answer-evidence-v1"
     assert report["summary"]["calibration"]["total"] == 6
     assert report["summary"]["held_out"]["total"] == 6
     assert len(report["cases"]) == 12
@@ -59,17 +59,17 @@ def test_current_baseline_report_is_complete_and_omits_candidate_text(
     assert "The weather is nice today." not in output.read_text(encoding="utf-8")
 
 
-def test_report_only_mode_succeeds_while_target_is_not_met(
+def test_report_only_mode_succeeds_when_target_is_met(
     tmp_path: Path,
 ) -> None:
     report_path = tmp_path / "report.json"
 
     assert main(["--output", str(report_path)]) == 0
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    assert report["acceptance"]["passed"] is False
+    assert report["acceptance"]["passed"] is True
 
 
-def test_enforcement_mode_fails_while_target_is_not_met(
+def test_enforcement_mode_succeeds_when_target_is_met(
     tmp_path: Path,
 ) -> None:
     assert (
@@ -80,5 +80,5 @@ def test_enforcement_mode_fails_while_target_is_not_met(
                 "--enforce-target",
             ]
         )
-        == 1
+        == 0
     )

@@ -2,7 +2,7 @@
 
 A CPU-first adaptive interview-practice assistant built as an AI systems portfolio project. The project separates observable input processing, internal state, dialogue policy, and response generation so each decision can be tested without relying on one large model.
 
-The current milestone is a **React interview interface with opt-in local audio turn-taking cues**, backed by a stateless FastAPI service with optional Gemini structured reply generation. Perception, state updates, and dialogue actions remain deterministic and fully testable offline; vision is not implemented.
+The current milestone is a **React interview interface with opt-in local audio turn-taking cues and explainable answer-quality evidence**, backed by a stateless FastAPI service with optional Gemini structured reply generation. Perception, state updates, and dialogue actions remain deterministic and fully testable offline; vision is not implemented.
 
 ## Research question
 
@@ -19,7 +19,7 @@ flowchart LR
     L[React interview UI] --> K[FastAPI transport]
     K --> A[Candidate text]
     A --> B[Perception<br/>explicit requests]
-    A --> C[Cognitive engine<br/>content evidence]
+    A --> C[Perception<br/>answer-quality evidence]
     B --> D[Deterministic<br/>dialogue policy]
     C --> D
     E[Session state] --> D
@@ -37,24 +37,25 @@ flowchart LR
 
 | Layer | Responsibility | Must not do |
 |---|---|---|
-| `perception` | Detect explicit requests for a hint, thinking time, or stopping | Infer emotion or choose the final action |
-| `cognitive` | Extract narrow content evidence and apply state transitions | Generate dialogue or call an LLM |
+| `perception` | Detect explicit control requests and observable answer evidence | Infer emotion, score the candidate, or choose the final action |
+| `cognitive` | Apply immutable session-state transitions | Extract text evidence, generate dialogue, or call an LLM |
 | `reasoning` | Apply one documented policy, render local replies, and optionally request one structured Gemini reply | Allow Gemini to change an action, reason, or state |
 | `service` | Orchestrate one turn in a fixed order and expose reply source/fallback metadata | Persist transcripts or duplicate policy rules |
 | `api` | Validate HTTP requests and delegate one turn to `InterviewService` | Store sessions, duplicate policy, or expose internal errors |
 | `frontend` | Keep the session in memory, derive local voice-activity turn cues, and display conversation evidence | Reimplement dialogue policy, persist media, transcribe audio, or infer psychological state |
 | `eval` | Exercise the domain service directly in local mode | Start FastAPI, a browser, or Gemini |
 
-Control precedence is:
+Control and answer precedence is:
 
 ```text
 ended session > stop > thinking time > hint > missing input
-> class-level follow-up > evaluation follow-up > continue
+> irrelevant/unclear answer > class-level follow-up
+> missing project > missing evaluation > continue
 ```
 
 ## Current behavior
 
-The baseline supports six actions:
+The baseline supports seven actions:
 
 - `offer_hint`
 - `wait`
@@ -62,8 +63,11 @@ The baseline supports six actions:
 - `end_session`
 - `continue_interview`
 - `request_input`
+- `request_clarification`
 
-Every turn returns the extracted signals, content evidence, selected action and reason, updated session state, reply, `reply_source`, and optional `fallback_reason`. `SessionState` contains counters and control state only; it does not retain candidate text. `wait`, `end_session`, and `request_input` are always rendered locally. Only `offer_hint`, `ask_followup`, and `continue_interview` are eligible for Gemini.
+Every turn returns explicit signals; input type; answer relevance; project, evaluation-method, and evaluation-result evidence; the selected action and reason; updated session state; reply; `reply_source`; and optional `fallback_reason`. `SessionState` contains counters and control state only; it does not retain candidate text.
+
+The evidence extractor uses documented, precompiled lexical patterns rather than claiming general language understanding. It identifies concrete project descriptions, evaluation terminology, numeric results, and explicit controls. Irrelevant or unclear answers receive `request_clarification`. `wait`, `end_session`, and `request_input` are always rendered locally. `offer_hint`, `ask_followup`, `continue_interview`, and `request_clarification` are eligible for optional Gemini wording.
 
 ## Quickstart
 
@@ -74,6 +78,7 @@ py -3.14 -m venv .venv
 .venv\Scripts\python -m pip install -r requirements-dev.txt
 .venv\Scripts\python -m pytest -q
 .venv\Scripts\python -m eval.run_cases
+.venv\Scripts\python -m eval.answer_quality_evaluation --enforce-target
 ```
 
 Start FastAPI in the first terminal:
@@ -219,24 +224,24 @@ The five cases are a smoke evaluation, not evidence of robustness, scientific va
 
 ### Answer-quality benchmark
 
-`eval/answer_quality_cases.json` defines six calibration and six held-out cases before a semantic evaluator is implemented. The contract labels observable answer properties (`input_type`, `relevance`, project evidence, evaluation-method evidence, and evaluation-result evidence) plus the expected policy action. It does not score intelligence, personality, employability, or speaking style.
+`eval/answer_quality_cases.json` defines six calibration and six held-out cases. The contract labels observable answer properties (`input_type`, `relevance`, project evidence, evaluation-method evidence, and evaluation-result evidence) plus the expected policy action. It does not score intelligence, personality, employability, or speaking style.
 
-The fixture covers missing input, irrelevant and vague answers, paraphrased evidence, a prompt-injection attempt, and explicit hint/thinking/stop controls. Case IDs are unique across splits, and held-out cases must not be used to tune prompts or heuristics.
+The fixture covers missing input, irrelevant and vague answers, paraphrased evidence, a prompt-injection attempt, and explicit hint/thinking/stop controls. Case IDs are unique across splits. The held-out cases were fixed before this evaluator and were not changed while implementing it.
 
 ```powershell
-python -m eval.answer_quality_evaluation
+python -m eval.answer_quality_evaluation --enforce-target
 ```
 
-The current deterministic keyword baseline is reported honestly:
+The explainable deterministic evaluator produces:
 
 | Split | Exact evidence + action | Expected action |
 |---|---:|---:|
-| Calibration | 4/6 (66.67%) | 5/6 (83.33%) |
-| Held-out | 2/6 (33.33%) | 3/6 (50.00%) |
+| Calibration | 6/6 (100%) | 6/6 (100%) |
+| Held-out | 6/6 (100%) | 6/6 (100%) |
 
-The future target is at least 80% held-out exact match and 100% held-out critical-action accuracy. The default runner validates the dataset, writes `eval/results/answer-quality-latest.json`, and reports `Target status: NOT MET` without failing CI. Use `--enforce-target` only after the semantic evaluator is connected; it currently exits non-zero by design.
+The acceptance target is at least 80% held-out exact match and 100% held-out critical-action accuracy. CI now enforces that target. The runner writes `eval/results/answer-quality-latest.json`; reports contain case IDs, labels, decisions, and aggregate metrics but omit candidate text.
 
-Reports contain case IDs, labels, decisions, and aggregate metrics but omit candidate text. These authored cases are engineering fixtures, not evidence of human validity, multilingual performance, or generalization.
+Twelve authored cases are only deterministic regression fixtures. The perfect result is not evidence of human validity, multilingual performance, broad semantic understanding, or generalization. A larger independently labeled dataset is required before making those claims.
 
 ### Audio turn evaluation
 
