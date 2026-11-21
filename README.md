@@ -217,6 +217,27 @@ It writes `eval/results/latest.json` with this shape:
 
 The five cases are a smoke evaluation, not evidence of robustness, scientific validity, multilingual performance, or generalization.
 
+### Answer-quality benchmark
+
+`eval/answer_quality_cases.json` defines six calibration and six held-out cases before a semantic evaluator is implemented. The contract labels observable answer properties (`input_type`, `relevance`, project evidence, evaluation-method evidence, and evaluation-result evidence) plus the expected policy action. It does not score intelligence, personality, employability, or speaking style.
+
+The fixture covers missing input, irrelevant and vague answers, paraphrased evidence, a prompt-injection attempt, and explicit hint/thinking/stop controls. Case IDs are unique across splits, and held-out cases must not be used to tune prompts or heuristics.
+
+```powershell
+python -m eval.answer_quality_evaluation
+```
+
+The current deterministic keyword baseline is reported honestly:
+
+| Split | Exact evidence + action | Expected action |
+|---|---:|---:|
+| Calibration | 4/6 (66.67%) | 5/6 (83.33%) |
+| Held-out | 2/6 (33.33%) | 3/6 (50.00%) |
+
+The future target is at least 80% held-out exact match and 100% held-out critical-action accuracy. The default runner validates the dataset, writes `eval/results/answer-quality-latest.json`, and reports `Target status: NOT MET` without failing CI. Use `--enforce-target` only after the semantic evaluator is connected; it currently exits non-zero by design.
+
+Reports contain case IDs, labels, decisions, and aggregate metrics but omit candidate text. These authored cases are engineering fixtures, not evidence of human validity, multilingual performance, or generalization.
+
 ### Audio turn evaluation
 
 `eval/audio_cases.json` contains separate synthetic `calibration` and `held_out` timing traces sampled at 100 ms. Calibration selects the threshold with the fewest false-ready cases, then the lowest mean end-detection delay. Held-out traces are never used for threshold selection.
