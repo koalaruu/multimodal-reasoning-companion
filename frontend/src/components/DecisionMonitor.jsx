@@ -11,7 +11,13 @@ function EvidenceItem({ label, active }) {
   );
 }
 
-export default function DecisionMonitor({ result, session, onReset }) {
+export default function DecisionMonitor({
+  result,
+  session,
+  onReset,
+  audioObservation,
+  audioReadiness,
+}) {
   const decision = result?.decision;
   const evidence = result?.content_evidence;
   const signals = result?.signals;
@@ -91,6 +97,36 @@ export default function DecisionMonitor({ result, session, onReset }) {
             active={evidence?.class_level_performance_mentioned}
           />
         </ul>
+      </section>
+
+      <section className="audio-evidence-card">
+        <h3>Audio turn evidence</h3>
+        <dl className="session-grid">
+          <div>
+            <dt>Availability</dt>
+            <dd>{readable(audioObservation.availability)}</dd>
+          </div>
+          <div>
+            <dt>Turn cue</dt>
+            <dd>{readable(audioReadiness.status)}</dd>
+          </div>
+          <div>
+            <dt>Speaking now</dt>
+            <dd>{audioObservation.is_speaking ? "Yes" : "No"}</dd>
+          </div>
+          <div>
+            <dt>Trailing silence</dt>
+            <dd>
+              {audioObservation.trailing_silence_ms == null
+                ? "Not observed"
+                : `${audioObservation.trailing_silence_ms} ms`}
+            </dd>
+          </div>
+        </dl>
+        <p className="observation-note">
+          Voice activity is an advisory timing signal, not an emotion or
+          attention measurement.
+        </p>
       </section>
 
       <section className="session-card">

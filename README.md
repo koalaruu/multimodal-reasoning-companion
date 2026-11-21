@@ -2,7 +2,7 @@
 
 A CPU-first adaptive interview-practice assistant built as an AI systems portfolio project. The project separates observable input processing, internal state, dialogue policy, and response generation so each decision can be tested without relying on one large model.
 
-The current milestone is a **React text interview interface backed by a stateless FastAPI service with optional Gemini structured reply generation**. Perception, state updates, and dialogue actions remain deterministic and fully testable offline; audio and vision are not implemented yet.
+The current milestone is a **React interview interface with opt-in local audio turn-taking cues**, backed by a stateless FastAPI service with optional Gemini structured reply generation. Perception, state updates, and dialogue actions remain deterministic and fully testable offline; vision is not implemented.
 
 ## Research question
 
@@ -14,6 +14,8 @@ The text baseline establishes the control condition for that future comparison.
 
 ```mermaid
 flowchart LR
+    M[Opt-in microphone] --> N[Browser voice<br/>activity detection]
+    N --> L
     L[React interview UI] --> K[FastAPI transport]
     K --> A[Candidate text]
     A --> B[Perception<br/>explicit requests]
@@ -40,7 +42,7 @@ flowchart LR
 | `reasoning` | Apply one documented policy, render local replies, and optionally request one structured Gemini reply | Allow Gemini to change an action, reason, or state |
 | `service` | Orchestrate one turn in a fixed order and expose reply source/fallback metadata | Persist transcripts or duplicate policy rules |
 | `api` | Validate HTTP requests and delegate one turn to `InterviewService` | Store sessions, duplicate policy, or expose internal errors |
-| `frontend` | Keep the current session in memory and display conversation, evidence, and decision metadata | Reimplement policy, persist transcripts, or infer psychological state |
+| `frontend` | Keep the session in memory, derive local voice-activity turn cues, and display conversation evidence | Reimplement dialogue policy, persist media, transcribe audio, or infer psychological state |
 | `eval` | Exercise the domain service directly in local mode | Start FastAPI, a browser, or Gemini |
 
 Control precedence is:
@@ -85,6 +87,7 @@ Start React in a second terminal:
 ```powershell
 cd frontend
 npm install
+npm test
 npm run dev
 ```
 
@@ -142,6 +145,20 @@ The React client keeps session state and conversation history in memory only. It
 - an explicit API connectivity error without exposing backend internals.
 
 The UI does not infer or display stress, mood, focus, personality, or hiring suitability.
+
+## Audio turn-taking v1
+
+Audio perception is optional and runs entirely in the browser after the user clicks **Enable microphone**. The Web Audio API samples signal energy and derives these observable fields:
+
+- microphone `availability`;
+- whether any speech-like activity has been observed;
+- whether activity is present now;
+- cumulative speech-activity duration;
+- trailing silence duration.
+
+The local readiness policy distinguishes `speaking`, `listening`, `thinking_pause`, and `ready`. A pause shorter than 1.6 seconds remains `thinking_pause`; it does not mark the turn complete. The cue is advisory: it never submits text, changes a dialogue action, or overrides the manual **Send answer** control.
+
+The browser does not record, transcribe, upload, or persist audio. Energy-based activity detection can react to environmental noise and must not be interpreted as emotion, focus, confusion, or speaking quality.
 
 ## Evaluation
 
@@ -203,10 +220,10 @@ The five cases are a smoke evaluation, not evidence of robustness, scientific va
 - Candidate text is processed in memory and is not stored in `SessionState` or default logs.
 - Gemini receives candidate text only when an API key is configured, the generator is explicitly injected, and the selected action is eligible. Review Google's data handling terms before using real interview content.
 - Logs contain reply source and fallback reason only, not candidate text, prompts, response bodies, API keys, or exception messages.
-- Raw audio and video are not implemented or persisted.
-- Microphone and camera capture will require explicit consent when those modalities are introduced.
-- Missing sensor data will be represented as unavailable, never as a neutral expression or state.
-- Text heuristics and future facial blendshapes do **not** measure stress, focus, mood, honesty, personality, competence, or hiring suitability.
+- Raw audio is sampled in memory for voice activity only; it is not recorded, transcribed, uploaded, logged, or persisted.
+- Microphone access requires an explicit button click and browser permission. Denial leaves the complete text workflow available.
+- Missing audio is represented as `unavailable`, never as silence or a neutral psychological state.
+- Text heuristics, audio energy, and future facial blendshapes do **not** measure stress, focus, mood, honesty, personality, competence, or hiring suitability.
 - Vision has not been implemented. It remains an optional experiment that must demonstrate measurable value before inclusion.
 
 Gemini generates wording only. Local policy retains ownership of `action`, `reason`, `followup_topic`, and all state transitions; control actions remain local even when Gemini is configured.
