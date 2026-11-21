@@ -2,7 +2,7 @@
 
 A CPU-first adaptive interview-practice assistant built as an AI systems portfolio project. The project separates observable input processing, internal state, dialogue policy, and response generation so each decision can be tested without relying on one large model.
 
-The current milestone is a **text baseline with optional Gemini structured reply generation**. Perception, state updates, and dialogue actions remain deterministic and fully testable offline; audio, vision, FastAPI, and React are not implemented yet.
+The current milestone is a **stateless FastAPI text service with optional Gemini structured reply generation**. Perception, state updates, and dialogue actions remain deterministic and fully testable offline; audio, vision, and React are not implemented yet.
 
 ## Research question
 
@@ -14,7 +14,8 @@ The text baseline establishes the control condition for that future comparison.
 
 ```mermaid
 flowchart LR
-    A[Candidate text] --> B[Perception<br/>explicit requests]
+    K[FastAPI transport] --> A[Candidate text]
+    A --> B[Perception<br/>explicit requests]
     A --> C[Cognitive engine<br/>content evidence]
     B --> D[Deterministic<br/>dialogue policy]
     C --> D
@@ -27,6 +28,7 @@ flowchart LR
     F --> J[Turn result]
     H --> J
     I --> J
+    J --> K
 ```
 
 | Layer | Responsibility | Must not do |
@@ -35,6 +37,7 @@ flowchart LR
 | `cognitive` | Extract narrow content evidence and apply state transitions | Generate dialogue or call an LLM |
 | `reasoning` | Apply one documented policy, render local replies, and optionally request one structured Gemini reply | Allow Gemini to change an action, reason, or state |
 | `service` | Orchestrate one turn in a fixed order and expose reply source/fallback metadata | Persist transcripts or duplicate policy rules |
+| `api` | Validate HTTP requests and delegate one turn to `InterviewService` | Store sessions, duplicate policy, or expose internal errors |
 | `eval` | Exercise the domain service directly in local mode | Start FastAPI, a browser, or Gemini |
 
 Control precedence is:
@@ -66,6 +69,7 @@ py -3.14 -m venv .venv
 .venv\Scripts\python -m pip install -r requirements-dev.txt
 .venv\Scripts\python -m pytest -q
 .venv\Scripts\python -m eval.run_cases
+.venv\Scripts\python -m uvicorn backend.app.main:app --reload
 ```
 
 On macOS or Linux:
@@ -75,6 +79,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 .venv/bin/python -m pytest -q
 .venv/bin/python -m eval.run_cases
+.venv/bin/python -m uvicorn backend.app.main:app --reload
 ```
 
 ### Optional Gemini replies
@@ -87,20 +92,36 @@ $env:GEMINI_MODEL = "gemini-3.8-flash"
 $env:GEMINI_TIMEOUT_SECONDS = "8"
 ```
 
-Construct the service explicitly at the future API composition root:
-
-```python
-from backend.app.reasoning.llm_agent import GeminiReplyGenerator
-from backend.app.service import InterviewService
-
-service = InterviewService(
-    reply_generator=GeminiReplyGenerator.from_env()
-)
-```
+The FastAPI composition root reads these variables when the server starts and constructs `InterviewService` once. No key keeps the API in local response mode.
 
 An absent or blank key keeps local mode. Invalid timeout configuration fails at construction only when a key is present. Timeout, SDK error, malformed structured output, or invalid reply uses the exact local response and returns `reply_source="local_fallback"` with a machine-readable reason. There are no application-level retries.
 
 Run every command from the repository root.
+
+## Text API
+
+The API is stateless. Clients send the current `SessionState` with every turn and receive the updated state in the response.
+
+| Method | Path | Behavior |
+|---|---|---|
+| `GET` | `/health` | Returns `{\"status\":\"ok\"}` without invoking the model |
+| `POST` | `/v1/interview/turn` | Runs one deterministic interview turn |
+| `GET` | `/docs` | Interactive OpenAPI documentation |
+
+Example request:
+
+```bash
+curl -X POST http://127.0.0.1:8000/v1/interview/turn \
+  -H \"Content-Type: application/json\" \
+  -d '{
+    \"candidate_input\": \"I built a classifier for support tickets.\",
+    \"state\": {\"session_id\": \"demo-session\"}
+  }'
+```
+
+The response includes observable evidence, the local policy decision, updated state, reply, `reply_source`, and optional `fallback_reason`. Schema errors return HTTP `422`. Gemini failures still return HTTP `200` with the exact local reply and `reply_source=\"local_fallback\"`.
+
+Browser access is restricted to the local Vite origins `http://localhost:5173` and `http://127.0.0.1:5173`.
 
 ## Evaluation
 
