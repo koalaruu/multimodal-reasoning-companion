@@ -1,0 +1,81 @@
+{
+  "schema_version": "1.0",
+  "interview_question": "Tell me about an AI project you built. How did you evaluate it?",
+  "cases": [
+    {
+      "id": "request_hint",
+      "description": "Candidate explicitly asks for help.",
+      "candidate_input": "Could I have a hint?",
+      "expected": {
+        "action": "offer_hint",
+        "reason": "explicit_hint_request",
+        "followup_topic": "none",
+        "reply_criteria": [
+          "Provides exactly one concise hint about explaining project evaluation.",
+          "Does not provide a complete sample answer.",
+          "Does not introduce an unrelated interview question."
+        ]
+      }
+    },
+    {
+      "id": "request_thinking_time",
+      "description": "Candidate explicitly asks for time to think.",
+      "candidate_input": "Give me a moment to think.",
+      "expected": {
+        "action": "wait",
+        "reason": "explicit_thinking_time_request",
+        "followup_topic": "none",
+        "reply_criteria": [
+          "Briefly acknowledges the request or remains silent.",
+          "Does not ask a new question.",
+          "Does not provide an unsolicited hint."
+        ]
+      }
+    },
+    {
+      "id": "project_without_evaluation",
+      "description": "Candidate describes the project but omits its evaluation method.",
+      "candidate_input": "I built a classifier for support tickets.",
+      "expected": {
+        "action": "ask_followup",
+        "reason": "evaluation_evidence_missing",
+        "followup_topic": "evaluation_method",
+        "reply_criteria": [
+          "Asks how the classifier was evaluated.",
+          "Asks only one focused follow-up question.",
+          "Does not assume which metric or dataset was used."
+        ]
+      }
+    },
+    {
+      "id": "metric_with_rationale",
+      "description": "Candidate names an evaluation metric and explains why it was selected.",
+      "candidate_input": "I used macro-F1 because the classes were imbalanced.",
+      "expected": {
+        "action": "ask_followup",
+        "reason": "class_level_performance_missing",
+        "followup_topic": "class_level_performance",
+        "reply_criteria": [
+          "Asks which class was hardest to predict or investigates class-level performance.",
+          "Does not repeat the question about why macro-F1 was chosen.",
+          "Asks only one focused follow-up question."
+        ]
+      }
+    },
+    {
+      "id": "request_end_session",
+      "description": "Candidate explicitly asks to end the practice session.",
+      "candidate_input": "I'd like to stop the practice here.",
+      "expected": {
+        "action": "end_session",
+        "reason": "explicit_stop_request",
+        "followup_topic": "none",
+        "reply_criteria": [
+          "Briefly and politely closes the session.",
+          "Does not ask another question.",
+          "Does not pressure the candidate to continue."
+        ]
+      }
+    }
+  ]
+}

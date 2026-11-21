@@ -1,0 +1,123 @@
+"""Version-one domain contracts for the text interview baseline."""
+
+from __future__ import annotations
+
+from enum import Enum
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+
+class DomainModel(BaseModel):
+    """Strict base model shared by domain contracts."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class DialogueAction(str, Enum):
+    OFFER_HINT = "offer_hint"
+    WAIT = "wait"
+    ASK_FOLLOWUP = "ask_followup"
+    END_SESSION = "end_session"
+    CONTINUE_INTERVIEW = "continue_interview"
+    REQUEST_INPUT = "request_input"
+
+
+class DecisionReason(str, Enum):
+    SESSION_ALREADY_ENDED = "session_already_ended"
+    EXPLICIT_STOP_REQUEST = "explicit_stop_request"
+    EXPLICIT_THINKING_TIME_REQUEST = "explicit_thinking_time_request"
+    EXPLICIT_HINT_REQUEST = "explicit_hint_request"
+    INPUT_MISSING = "input_missing"
+    CLASS_LEVEL_PERFORMANCE_MISSING = "class_level_performance_missing"
+    EVALUATION_EVIDENCE_MISSING = "evaluation_evidence_missing"
+    ANSWER_COMPLETE = "answer_complete"
+
+
+class FollowupTopic(str, Enum):
+    NONE = "none"
+    EVALUATION_METHOD = "evaluation_method"
+    CLASS_LEVEL_PERFORMANCE = "class_level_performance"
+
+
+class SessionStatus(str, Enum):
+    ACTIVE = "active"
+    ENDED = "ended"
+
+
+class ReplySource(str, Enum):
+    LOCAL = "local"
+    GEMINI = "gemini"
+    LOCAL_FALLBACK = "local_fallback"
+
+
+class ReplyFallbackReason(str, Enum):
+    TIMEOUT = "timeout"
+    SDK_ERROR = "sdk_error"
+    MALFORMED_OUTPUT = "malformed_output"
+    INVALID_REPLY = "invalid_reply"
+
+
+class ExplicitSignals(DomainModel):
+    hint_requested: bool = False
+    thinking_time_requested: bool = False
+    stop_requested: bool = False
+
+
+class ContentEvidence(DomainModel):
+    project_mentioned: bool = False
+    evaluation_mentioned: bool = False
+    macro_f1_mentioned: bool = False
+    class_imbalance_mentioned: bool = False
+    class_level_performance_mentioned: bool = False
+
+
+class SessionState(DomainModel):
+    session_id: str
+    status: SessionStatus = SessionStatus.ACTIVE
+    turn_index: int = Field(default=0, ge=0)
+    hints_offered: int = Field(default=0, ge=0)
+    followups_asked: int = Field(default=0, ge=0)
+    last_action: DialogueAction | None = None
+
+    @field_validator("session_id")
+    @classmethod
+    def session_id_must_not_be_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("session_id must not be blank")
+        return value
+
+
+class ActionDecision(DomainModel):
+    action: DialogueAction
+    reason: DecisionReason
+    followup_topic: FollowupTopic = FollowupTopic.NONE
+
+    @model_validator(mode="after")
+    def validate_followup_topic(self) -> "ActionDecision":
+        asks_followup = self.action == DialogueAction.ASK_FOLLOWUP
+        has_topic = self.followup_topic != FollowupTopic.NONE
+        if asks_followup and not has_topic:
+            raise ValueError("ask_followup requires a followup topic")
+        if not asks_followup and has_topic:
+            raise ValueError("only ask_followup may have a followup topic")
+        return self
+
+
+class TurnResult(DomainModel):
+    signals: ExplicitSignals
+    content_evidence: ContentEvidence
+    decision: ActionDecision
+    updated_state: SessionState
+    reply: str = Field(min_length=1)
+    reply_source: ReplySource = ReplySource.LOCAL
+    fallback_reason: ReplyFallbackReason | None = None
+
+    @model_validator(mode="after")
+    def validate_fallback_metadata(self) -> "TurnResult":
+        used_fallback = self.reply_source == ReplySource.LOCAL_FALLBACK
+        has_reason = self.fallback_reason is not None
+        if used_fallback and not has_reason:
+            raise ValueError("local_fallback requires a fallback reason")
+        if not used_fallback and has_reason:
+            raise ValueError("fallback reason requires local_fallback source")
+        return self
