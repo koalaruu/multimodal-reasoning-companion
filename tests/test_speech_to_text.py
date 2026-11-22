@@ -13,9 +13,11 @@ from backend.app.main import create_app
 from backend.app.perception.speech_to_text import (
     AudioTooLongError,
     FasterWhisperTranscriber,
+    GroqWhisperTranscriber,
     NoSpeechDetectedError,
     TranscriberUnavailableError,
     TranscriptionResult,
+    create_transcriber,
 )
 from backend.app.service import InterviewService
 
@@ -243,3 +245,121 @@ def test_audio_endpoint_hides_transcriber_failure_details() -> None:
         "message": "Local transcription is unavailable.",
     }
     assert "private runtime details" not in response.text
+
+
+# --- Groq Whisper STT provider tests ---
+
+
+class FakeGroqAudioTranscriptions:
+    """Fake groq audio.transcriptions namespace."""
+
+    def __init__(self, response: SimpleNamespace) -> None:
+        self.response = response
+        self.calls: list[dict] = []
+
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        return self.response
+
+
+class FakeGroqClient:
+    """Fake groq.Groq client."""
+
+    def __init__(self, response: SimpleNamespace) -> None:
+        self.audio = SimpleNamespace(transcriptions=FakeGroqAudioTranscriptions(response))
+
+
+def test_groq_whisper_transcribes_audio() -> None:
+    response = SimpleNamespace(
+        text=" I built a classifier. ",
+        language="en",
+        language_probability=0.98,
+        duration=3.5,
+    )
+    transcriber = GroqWhisperTranscriber(
+        api_key="test-key",
+        model="whisper-large-v3-turbo",
+        client=FakeGroqClient(response),
+    )
+    result = transcriber.transcribe(BytesIO(b"fake-audio-bytes"))
+
+    assert result.text == "I built a classifier."
+    assert result.language == "en"
+    assert result.language_probability == 0.98
+    assert result.audio_duration_ms == 3_500
+    assert result.model == "groq/whisper-large-v3-turbo"
+    assert result.processing_duration_ms >= 0
+
+
+def test_groq_whisper_rejects_empty_audio() -> None:
+    transcriber = GroqWhisperTranscriber(
+        api_key="test-key",
+        client=FakeGroqClient(SimpleNamespace(text="")),
+    )
+    with pytest.raises(NoSpeechDetectedError, match="empty"):
+        transcriber.transcribe(BytesIO(b""))
+
+
+def test_groq_whisper_detects_no_speech() -> None:
+    response = SimpleNamespace(
+        text="",
+        language="en",
+        language_probability=0.5,
+        duration=2.0,
+    )
+    transcriber = GroqWhisperTranscriber(
+        api_key="test-key",
+        client=FakeGroqClient(response),
+    )
+    with pytest.raises(NoSpeechDetectedError, match="no speech"):
+        transcriber.transcribe(BytesIO(b"audio"))
+
+
+def test_groq_whisper_maps_request_failure_to_unavailable() -> None:
+    class FailingTranscriptions:
+        def create(self, **kwargs):
+            raise RuntimeError("connection refused")
+
+    class FailingClient:
+        def __init__(self):
+            self.audio = SimpleNamespace(transcriptions=FailingTranscriptions())
+
+    transcriber = GroqWhisperTranscriber(
+        api_key="test-key",
+        client=FailingClient(),
+    )
+    with pytest.raises(TranscriberUnavailableError, match="Groq STT request failed"):
+        transcriber.transcribe(BytesIO(b"audio"))
+
+
+def test_groq_whisper_requires_api_key() -> None:
+    with pytest.raises(ValueError, match="non-empty"):
+        GroqWhisperTranscriber(api_key="")
+
+
+def test_groq_whisper_rejects_unsupported_model() -> None:
+    with pytest.raises(ValueError, match="model must be one of"):
+        GroqWhisperTranscriber(api_key="test-key", model="whisper-tiny")
+
+
+def test_create_transcriber_defaults_to_local() -> None:
+    transcriber = create_transcriber({"STT_PROVIDER": "local"})
+    assert isinstance(transcriber, FasterWhisperTranscriber)
+
+
+def test_create_transcriber_selects_groq_with_key() -> None:
+    transcriber = create_transcriber({
+        "STT_PROVIDER": "groq",
+        "GROQ_API_KEY": "test-key",
+    })
+    assert isinstance(transcriber, GroqWhisperTranscriber)
+
+
+def test_create_transcriber_falls_back_without_key() -> None:
+    import warnings
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        transcriber = create_transcriber({"STT_PROVIDER": "groq"})
+        assert isinstance(transcriber, FasterWhisperTranscriber)
+        assert len(caught) == 1
+        assert "GROQ_API_KEY is empty" in str(caught[0].message)

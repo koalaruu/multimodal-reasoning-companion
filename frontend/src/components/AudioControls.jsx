@@ -11,7 +11,7 @@ function formatDetectedLanguage(result) {
 const VOICE_LABELS = {
   idle: "Voice answer ready",
   recording: "Recording voice answer",
-  transcribing: "Transcribing locally",
+  transcribing: "Transcribing voice answer",
   ready: "Transcript added to Your answer",
   error: "Voice transcription unavailable",
 };
@@ -100,6 +100,13 @@ export default function AudioControls({
               {formatDuration(voiceResult.processing_duration_ms)} using{" "}
               {voiceResult.model}. Detected{" "}
               {formatDetectedLanguage(voiceResult)}.
+            </small>
+          )}
+          {voiceResult && (
+            <small className="stt-privacy-note">
+              {voiceResult.model?.startsWith("groq/")
+                ? "Audio was uploaded to Groq for transcription."
+                : "Audio was transcribed on this device."}
             </small>
           )}
         </div>
