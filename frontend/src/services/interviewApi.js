@@ -83,9 +83,9 @@ export async function submitInterviewTurn({
       candidate_input: candidateInput,
       state,
       ...(emotionalState ? { emotional_state: emotionalState } : {}),
-      ...(cvText ? { cv_text: cvText } : {}),
-      ...(targetRole ? { target_role: targetRole } : {}),
-      ...(jobDescription ? { job_description: jobDescription } : {}),
+      ...(cvText !== undefined ? { cv_text: cvText } : {}),
+      ...(targetRole !== undefined ? { target_role: targetRole } : {}),
+      ...(jobDescription !== undefined ? { job_description: jobDescription } : {}),
       ...(interviewMode ? { interview_mode: interviewMode } : {}),
       ...(turnReadiness ? { turn_readiness: turnReadiness } : {}),
       ...(trailingSilenceMs != null

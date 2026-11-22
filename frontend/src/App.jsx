@@ -70,6 +70,14 @@ export default function App() {
   const vision = useVisualPerception();
 
   const ended = session.status === "ended";
+  // Inputs own the active context, even if an in-flight turn returns an older snapshot.
+  const sessionWithContext = {
+    ...session,
+    cv_text: cv?.text ?? null,
+    cv_filename: cv?.filename ?? null,
+    target_role: targetRole.trim() || null,
+    job_description: jobDescription.trim() || null,
+  };
 
   function navigateTo(view) {
     setActiveView(view);
@@ -93,13 +101,10 @@ export default function App() {
       const readiness = deriveTurnReadiness(audio.observation);
       const result = await submitInterviewTurn({
         candidateInput: answer,
-        state: session,
+        state: sessionWithContext,
         emotionalState: vision.emotionalState,
         turnReadiness: readiness.status,
         trailingSilenceMs: audio.observation?.trailing_silence_ms ?? null,
-        cvText: cv?.text,
-        targetRole: targetRole.trim(),
-        jobDescription: jobDescription.trim(),
         interviewMode,
       });
       setSession(result.updated_state);
@@ -345,7 +350,7 @@ export default function App() {
         <section id="insights-view" hidden={activeView !== "insights"} aria-label="Session insights">
           <SessionReview
             key={session.session_id}
-            session={session}
+            session={sessionWithContext}
             disabled={(session.turn_index ?? 0) < 2 || sending}
           />
           <DecisionMonitor

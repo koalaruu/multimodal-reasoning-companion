@@ -173,12 +173,12 @@ def process_interview_turn(
 ) -> TurnResult:
     state = request_body.state
     updates: dict[str, object] = {}
-    if request_body.cv_text:
-        updates["cv_text"] = request_body.cv_text
-    if request_body.target_role:
-        updates["target_role"] = request_body.target_role
-    if request_body.job_description:
-        updates["job_description"] = request_body.job_description
+    for field in ("cv_text", "target_role", "job_description"):
+        if field in request_body.model_fields_set:
+            value = getattr(request_body, field)
+            updates[field] = (value.strip() if value is not None else None) or None
+    if "cv_text" in updates and updates["cv_text"] is None:
+        updates["cv_filename"] = None
     if request_body.interview_mode is not None:
         updates["interview_mode"] = request_body.interview_mode
     if updates:
