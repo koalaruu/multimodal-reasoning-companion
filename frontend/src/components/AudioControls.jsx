@@ -42,13 +42,8 @@ export default function AudioControls({
     <section className="audio-panel" aria-labelledby="audio-heading">
       <div className="audio-summary">
         <div>
-          <p className="eyebrow">Optional local audio</p>
-          <h2 id="audio-heading">Turn-taking and voice answer</h2>
-          <p>
-            Voice activity stays in the browser. English or Indonesian voice
-            recordings are sent only to local FastAPI, transcribed in memory,
-            and never submit an answer automatically.
-          </p>
+          <p className="eyebrow">Voice input</p>
+          <h2 id="audio-heading">Speak your answer</h2>
         </div>
         <div className="audio-actions">
           <button
@@ -113,6 +108,8 @@ export default function AudioControls({
         <div className="level-meter" aria-label="Current microphone activity">
           <span style={{ width: `${Math.round(observation.level * 100)}%` }} />
         </div>
+        <details className="sensor-details">
+          <summary>Voice activity details</summary>
         <dl className="audio-metrics">
           <div>
             <dt>Speech observed</dt>
@@ -127,7 +124,11 @@ export default function AudioControls({
             <dd>{formatDuration(observation.trailing_silence_ms)}</dd>
           </div>
         </dl>
+        </details>
       </div>
+      <p className="observation-note">
+        Review the transcript before sending. Recording never sends a chat message automatically.
+      </p>
 
       {(observation.error || voiceError) && (
         <p className="audio-error" role="status">

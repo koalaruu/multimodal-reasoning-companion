@@ -9,11 +9,15 @@ export default function ChatBox({
   sending,
   ended,
 }) {
-  const messageEndRef = useRef(null);
+  const messageListRef = useRef(null);
 
   useEffect(() => {
-    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    const list = messageListRef.current;
+    list?.scrollTo({
+      top: list.scrollHeight,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+    });
+  }, [messages, sending]);
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -35,7 +39,7 @@ export default function ChatBox({
         </span>
       </div>
 
-      <div className="message-list" aria-live="polite">
+      <div className="message-list" ref={messageListRef} aria-live="polite" aria-busy={sending}>
         {messages.map((message) => (
           <article
             className={`message ${message.role}`}
@@ -60,7 +64,6 @@ export default function ChatBox({
             <span className="sr-only">Preparing the next response</span>
           </div>
         )}
-        <div ref={messageEndRef} />
       </div>
 
       <form className="answer-form" onSubmit={handleSubmit}>
