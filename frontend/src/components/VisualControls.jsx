@@ -109,6 +109,11 @@ export default function VisualControls({
                   confidence {(emotionalState.confidence * 100).toFixed(0)}%
                 </small>
               </div>
+              {emotionalState.activated_aus?.length > 0 && (
+                <p className="activated-aus">
+                  Activated AU proxies: {emotionalState.activated_aus.join(", ")}
+                </p>
+              )}
               {Object.entries(emotionalState.emotion_scores)
                 .filter(([, v]) => v > 0)
                 .sort(([, a], [, b]) => b - a)
@@ -125,6 +130,12 @@ export default function VisualControls({
                     <small>{(score * 100).toFixed(0)}%</small>
                   </div>
                 ))}
+              {emotionalState.dominant_emotion === "neutral" && (
+                <p className="emotion-disclaimer">
+                  No AU combination cleared the activation threshold, so the
+                  resting face reads as neutral.
+                </p>
+              )}
               <p className="emotion-disclaimer">
                 FACS AU proxy mapping (Ekman &amp; Friesen, 1978).
                 Not a direct measure of mental state.

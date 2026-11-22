@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.routes import router
+from backend.app.env_loader import load_dotenv
 from backend.app.perception.speech_to_text import (
     AudioTranscriber,
     create_transcriber,
@@ -23,6 +24,7 @@ def create_app(
     interview_service: InterviewService | None = None,
     audio_transcriber: AudioTranscriber | None = None,
 ) -> FastAPI:
+    load_dotenv()
     app = FastAPI(
         title="Multimodal Reasoning Companion API",
         version="0.1.0",

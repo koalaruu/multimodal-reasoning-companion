@@ -143,17 +143,18 @@ def _emotion_scores(
 ) -> dict[str, float]:
     """Compute emotion scores from AU activation.
 
-    Score = mean of AU values for each emotion's required combination.
-    An emotion only scores above zero if ALL its required AUs are present.
+    Score = mean of the AU values in each emotion's required combination,
+    treating missing AUs as zero. This is a weighted evidence measure: a
+    partial combination still registers proportionally instead of being
+    discarded. An emotion registers only when at least one required AU is
+    active AND the mean clears the activation threshold.
     """
     results: dict[str, float] = {}
     for emotion, required_aus in _EMOTION_AU_MAP.items():
         activated = [au_scores.get(au, 0.0) for au in required_aus]
-        # Require all AUs to be above threshold for the emotion to register.
-        if all(a > _ACTIVATION_THRESHOLD for a in activated):
-            results[emotion.value] = sum(activated) / len(activated)
-        else:
-            results[emotion.value] = 0.0
+        mean_score = sum(activated) / len(activated)
+        has_activation = any(a > _ACTIVATION_THRESHOLD for a in activated)
+        results[emotion.value] = mean_score if has_activation else 0.0
     return results
 
 
@@ -178,14 +179,18 @@ def _disambiguate_surprise_fear(
 def _dominant_emotion(
     emotion_scores: dict[str, float],
 ) -> tuple[EmotionLabel, float]:
-    """Return the highest-scoring emotion and its score."""
+    """Return the highest-scoring emotion and its score.
+
+    Scores below the activation threshold are treated as neutral rather
+    than reported as weak evidence, so resting faces stay neutral.
+    """
     if not emotion_scores:
         return EmotionLabel.NEUTRAL, 0.0
 
     best_label, best_score = max(
         emotion_scores.items(), key=lambda kv: kv[1]
     )
-    if best_score <= 0.0:
+    if best_score < _ACTIVATION_THRESHOLD:
         return EmotionLabel.NEUTRAL, 0.0
 
     return EmotionLabel(best_label), best_score

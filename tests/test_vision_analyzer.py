@@ -47,6 +47,23 @@ class TestFACSMapping:
         assert "AU6" in state.activated_aus
         assert "AU12" in state.activated_aus
 
+    def test_partial_activation_registers_proportionally(self) -> None:
+        # AU12 present, AU6 absent: happy must still register, at half strength.
+        obs = _obs([_reading("mouthSmileLeft", 0.8)])
+        state = analyze(obs)
+        assert state.emotion_scores["happy"] == pytest.approx(0.4, abs=0.01)
+        assert state.dominant_emotion == EmotionLabel.HAPPY
+
+    def test_resting_face_stays_neutral(self) -> None:
+        obs = _obs([
+            _reading("mouthPucker", 0.12),
+            _reading("browOuterUpLeft", 0.10),
+            _reading("eyeLookDownLeft", 0.11),
+        ])
+        state = analyze(obs)
+        assert state.dominant_emotion == EmotionLabel.NEUTRAL
+        assert state.confidence == 0.0
+
     def test_surprised_wide_eyes_jaw_open(self) -> None:
         obs = _obs([
             _reading("browInnerUp", 0.7),
