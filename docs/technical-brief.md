@@ -135,6 +135,23 @@ profiles (κ = 1.0), which proves internal consistency only.
 Three clips, English. **No Indonesian benchmark exists yet** — this is the
 largest unmeasured claim in the project.
 
+Public Indonesian speech on Wikimedia Commons is one-word pronunciation
+recordings, which cannot support a word-error-rate claim. Rather than report a
+number that looks like a benchmark but measures nothing, the project ships a
+builder for a local benchmark instead:
+
+```powershell
+# put mono WAVs + references.json + plan.json in eval/recordings/, then:
+python -m eval.build_local_stt_dataset
+python -m eval.run_stt_cases --cases eval/stt_cases_local.json
+```
+
+The builder refuses to write a dataset that cannot support a claim: it requires
+at least two held-out cases from at least two distinct speakers, and it rejects
+any speaker appearing in both calibration and held-out, because that leaks.
+Recordings stay gitignored; only the generated dataset with verified SHA-256
+hashes is committed.
+
 ## 5. What this proves and what it does not
 
 **Proves:** the policy is genuinely multimodal. Sensor evidence changes the
@@ -187,7 +204,8 @@ Every run writes a JSON report to `eval/results/`.
 
 1. **Human raters** on the ten decision points — converts "policy is
    multimodal" into "policy is right N% of the time".
-2. **Indonesian STT benchmark** — closes the biggest unmeasured claim.
+2. **Indonesian STT benchmark** — the builder exists; it needs real
+   recordings from at least two speakers.
 3. **Recorded sessions from volunteers** — replaces synthetic scenarios.
 4. **Video demo + this brief** as the application package.
 
