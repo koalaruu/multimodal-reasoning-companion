@@ -20,6 +20,8 @@ class InterviewTurnRequest(DomainModel):
     cv_text: str | None = None
     target_role: str | None = None
     job_description: str | None = None
+    turn_readiness: str | None = None
+    trailing_silence_ms: int | None = None
 
 
 class InterviewReviewRequest(DomainModel):

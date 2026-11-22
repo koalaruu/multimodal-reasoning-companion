@@ -13,6 +13,7 @@ from backend.app.schemas import (
     InputType,
     SessionState,
     SessionStatus,
+    TurnReadiness,
 )
 
 # After this many clarification requests the policy stops repeating itself
@@ -29,6 +30,10 @@ _MAX_HINTS = 2
 _HIGH_LOAD_EMOTIONS = frozenset({"angry", "fearful", "disgusted"})
 _HIGH_LOAD_MIN_CONFIDENCE = 0.35
 _MAX_GIVE_SPACE = 1
+
+# A short trailing silence means the candidate is still thinking. Pressing a
+# new question there is the interruption this project exists to avoid.
+_MAX_AUDIO_WAITS = 2
 
 
 def decide(
@@ -62,6 +67,16 @@ def decide(
         return ActionDecision(
             action=DialogueAction.ANSWER_META_QUESTION,
             reason=DecisionReason.META_QUESTION_ANSWERED,
+        )
+    if (
+        signals.turn_readiness
+        in {TurnReadiness.SPEAKING, TurnReadiness.LISTENING,
+            TurnReadiness.THINKING_PAUSE}
+        and state.audio_waits_offered < _MAX_AUDIO_WAITS
+    ):
+        return ActionDecision(
+            action=DialogueAction.WAIT,
+            reason=DecisionReason.AUDIO_TURN_INCOMPLETE,
         )
     if evidence.input_type == InputType.MISSING:
         return ActionDecision(

@@ -46,6 +46,8 @@ export async function submitInterviewTurn({
   cvText,
   targetRole,
   jobDescription,
+  turnReadiness,
+  trailingSilenceMs,
   signal,
 }) {
   const response = await fetch(`${API_BASE_URL}/v1/interview/turn`, {
@@ -58,6 +60,10 @@ export async function submitInterviewTurn({
       ...(cvText ? { cv_text: cvText } : {}),
       ...(targetRole ? { target_role: targetRole } : {}),
       ...(jobDescription ? { job_description: jobDescription } : {}),
+      ...(turnReadiness ? { turn_readiness: turnReadiness } : {}),
+      ...(trailingSilenceMs != null
+        ? { trailing_silence_ms: trailingSilenceMs }
+        : {}),
     }),
     signal,
   });

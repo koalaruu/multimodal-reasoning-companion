@@ -290,6 +290,42 @@ The UI shows a **Review this session** button once two turns have been
 answered. Covered items render in green, missing in amber, so the gap is
 visible without reading prose.
 
+### Multimodal A/B evaluation
+
+`python -m eval.run_multimodal_ab` runs ten fixed scenarios under three
+conditions over identical inputs:
+
+| Condition | Audio turn-readiness | Facial high-load |
+|---|---|---|
+| `text` | withheld | withheld |
+| `text_audio` | available | withheld |
+| `text_audio_visual` | available | available |
+
+Results (`eval/results/multimodal-ab-latest.json`):
+
+| Scenario | text | text+audio | text+audio+visual |
+|---|---|---|---|
+| complete answer, calm | `continue_interview` | `continue_interview` | `continue_interview` |
+| complete answer, tense face | `continue_interview` | `continue_interview` | **`give_space`** |
+| thin answer, mid-speech pause | `request_clarification` | **`wait`** | `wait` |
+| thin answer, turn ready | `request_clarification` | `request_clarification` | `request_clarification` |
+| vague answer, still speaking | `request_clarification` | **`wait`** | `wait` |
+| project only, tense face | `ask_followup` | `ask_followup` | **`give_space`** |
+| project only, calm | `ask_followup` | `ask_followup` | `ask_followup` |
+| nothing spoken | `request_input` | **`wait`** | `wait` |
+| pause but answer complete | `continue_interview` | **`wait`** | `wait` |
+| low-confidence face | `continue_interview` | `continue_interview` | `continue_interview` |
+
+Audio changed the action in **4 of 10** scenarios; vision changed it in **2 of
+10**. Both modalities left 4 scenarios untouched, which is the point: a calm or
+low-confidence reading must not manufacture a different decision.
+
+**What this does and does not show.** It shows the policy is genuinely
+multimodal — sensor input changes the selected action, and the direction is the
+one the design predicts (wait during a pause, yield space under visible load).
+It does **not** show those actions were the right ones for a real candidate.
+That needs human raters scoring the same clips, which remains future work.
+
 ### Scientific basis and limitations
 
 The FACS AU-emotion mapping follows the documented combinations published by Ekman & Friesen:
