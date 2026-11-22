@@ -69,6 +69,7 @@ class InterviewService:
         cv_text: str | None = None,
         target_role: str | None = None,
         job_description: str | None = None,
+        interview_mode: str | None = None,
     ):
         """First question for this candidate, grounded in CV and posting."""
 
@@ -84,6 +85,7 @@ class InterviewService:
             cv_text=cv_text,
             target_role=target_role,
             job_description=job_description,
+            interview_mode=interview_mode,
             local_reply=local_reply,
         )
         return result.reply, result.source
@@ -211,6 +213,7 @@ class InterviewService:
             cv_text=state.cv_text,
             target_role=state.target_role,
             job_description=state.job_description,
+            interview_mode=state.interview_mode.value,
             emotional_state=state.emotional_state,
             local_reply=local_reply,
         )

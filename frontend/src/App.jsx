@@ -48,6 +48,7 @@ export default function App() {
   const [targetRole, setTargetRole] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [openingBusy, setOpeningBusy] = useState(false);
+  const [interviewMode, setInterviewMode] = useState("strict");
   const audio = useAudioActivity();
   const voice = useVoiceTranscription({
     getStream: audio.getStream,
@@ -84,6 +85,7 @@ export default function App() {
         cvText: cv?.text,
         targetRole: targetRole.trim(),
         jobDescription: jobDescription.trim(),
+        interviewMode,
       });
       setSession(result.updated_state);
       setLatestResult(result);
@@ -121,6 +123,7 @@ export default function App() {
         cvText: cv?.text,
         targetRole: targetRole.trim(),
         jobDescription: jobDescription.trim(),
+        interviewMode,
       });
       setMessages((current) => {
         const rest = current.slice(1);
@@ -159,6 +162,7 @@ export default function App() {
     setCv(null);
     setTargetRole("");
     setJobDescription("");
+    setInterviewMode("strict");
     audio.disableMicrophone();
     vision.disableCamera();
   }
@@ -202,6 +206,8 @@ export default function App() {
         cv={cv}
         targetRole={targetRole}
         jobDescription={jobDescription}
+        interviewMode={interviewMode}
+        onInterviewModeChange={setInterviewMode}
         onCvLoaded={setCv}
         onTargetRoleChange={setTargetRole}
         onJobDescriptionChange={setJobDescription}

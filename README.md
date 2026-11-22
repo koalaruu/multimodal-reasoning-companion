@@ -269,6 +269,21 @@ browser stores it in the session and sends it with later turns. **No CV text is
 persisted on the server.** Scanned PDFs without a text layer are rejected with a
 clear error because they need OCR first.
 
+**Interviewer style** (in the same panel):
+
+- **Strict** is the default: one question without commentary.
+- **Coach** requests at most one short observation grounded in the candidate's
+  answer, followed by one question. It still does not write answers for the
+  candidate or invent achievements.
+
+The choice applies to generated openings and subsequent Groq replies. Switching
+styles preserves conversation, CV, job description, and multimodal context.
+Reset returns to Strict. Local control replies and offline fallbacks are
+unchanged; this is a prompt preference, not a guarantee about model wording.
+API clients can send `interview_mode: "strict" | "coach"` with
+`/v1/interview/opening` or `/v1/interview/turn`. Turn state retains the mode when
+the next request omits it; unknown values return 422.
+
 If no `GROQ_API_KEY` is configured, the app falls back to the deterministic
 text pipeline and says so in the transparency panel.
 

@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from backend.app.schemas import (
     DomainModel,
     EmotionalState,
+    InterviewMode,
     ReplySource,
     SessionState,
 )
@@ -27,6 +28,7 @@ class InterviewTurnRequest(DomainModel):
     job_description: str | None = None
     turn_readiness: str | None = None
     trailing_silence_ms: int | None = None
+    interview_mode: InterviewMode | None = None
 
 
 class InterviewReviewRequest(DomainModel):
@@ -37,6 +39,7 @@ class InterviewOpeningRequest(DomainModel):
     cv_text: str | None = None
     target_role: str | None = None
     job_description: str | None = None
+    interview_mode: InterviewMode | None = None
 
 
 class InterviewOpeningResponse(DomainModel):

@@ -996,6 +996,33 @@ footer {
   resize: vertical;
 }
 
+.mode-select {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0 0 16px;
+  padding: 12px;
+  border: 1px solid #d8dfdb;
+  border-radius: 9px;
+  font-size: 0.8rem;
+}
+
+.mode-select legend {
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+.mode-select label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.mode-select input {
+  flex-shrink: 0;
+  accent-color: #255e4c;
+}
+
 .cv-actions {
   display: flex;
   flex-wrap: wrap;

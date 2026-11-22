@@ -2,7 +2,13 @@ const API_BASE_URL = (
   import.meta.env?.VITE_API_BASE_URL ?? "http://127.0.0.1:8000"
 ).replace(/\/$/, "");
 
-export async function fetchOpeningQuestion({ cvText, targetRole, jobDescription, signal }) {
+export async function fetchOpeningQuestion({
+  cvText,
+  targetRole,
+  jobDescription,
+  interviewMode,
+  signal,
+}) {
   const response = await fetch(`${API_BASE_URL}/v1/interview/opening`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -10,6 +16,7 @@ export async function fetchOpeningQuestion({ cvText, targetRole, jobDescription,
       ...(cvText ? { cv_text: cvText } : {}),
       ...(targetRole ? { target_role: targetRole } : {}),
       ...(jobDescription ? { job_description: jobDescription } : {}),
+      ...(interviewMode ? { interview_mode: interviewMode } : {}),
     }),
     signal,
   });
@@ -64,6 +71,7 @@ export async function submitInterviewTurn({
   cvText,
   targetRole,
   jobDescription,
+  interviewMode,
   turnReadiness,
   trailingSilenceMs,
   signal,
@@ -78,6 +86,7 @@ export async function submitInterviewTurn({
       ...(cvText ? { cv_text: cvText } : {}),
       ...(targetRole ? { target_role: targetRole } : {}),
       ...(jobDescription ? { job_description: jobDescription } : {}),
+      ...(interviewMode ? { interview_mode: interviewMode } : {}),
       ...(turnReadiness ? { turn_readiness: turnReadiness } : {}),
       ...(trailingSilenceMs != null
         ? { trailing_silence_ms: trailingSilenceMs }
