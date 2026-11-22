@@ -94,8 +94,22 @@ class InterviewService:
         state: SessionState,
         candidate_input: str,
         emotional_state: EmotionalState | None = None,
+        turn_readiness: str | None = None,
+        trailing_silence_ms: int | None = None,
     ) -> TurnResult:
         signals = extract_explicit_signals(candidate_input)
+        if turn_readiness:
+            from backend.app.schemas import TurnReadiness
+
+            try:
+                signals = signals.model_copy(
+                    update={
+                        "turn_readiness": TurnReadiness(turn_readiness),
+                        "trailing_silence_ms": trailing_silence_ms,
+                    }
+                )
+            except ValueError:
+                pass
         turn_evidence = extract_answer_quality(candidate_input, signals)
         cumulative_evidence = merge_evidence(
             state.cumulative_evidence, turn_evidence

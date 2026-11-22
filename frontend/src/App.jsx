@@ -7,6 +7,7 @@ import ChatBox from "./components/ChatBox.jsx";
 import DecisionMonitor from "./components/DecisionMonitor.jsx";
 import CvUpload from "./components/CvUpload.jsx";
 import SessionReview from "./components/SessionReview.jsx";
+import { deriveTurnReadiness } from "./audio/turnReadiness.js";
 import VisualControls from "./components/VisualControls.jsx";
 import { submitInterviewTurn } from "./services/interviewApi.js";
 
@@ -69,10 +70,13 @@ export default function App() {
     setSending(true);
 
     try {
+      const readiness = deriveTurnReadiness(audio.observation);
       const result = await submitInterviewTurn({
         candidateInput: answer,
         state: session,
         emotionalState: vision.emotionalState,
+        turnReadiness: readiness.status,
+        trailingSilenceMs: audio.observation?.trailing_silence_ms ?? null,
         cvText: cv?.text,
         targetRole: targetRole.trim(),
         jobDescription: jobDescription.trim(),

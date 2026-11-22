@@ -58,6 +58,7 @@ class DecisionReason(str, Enum):
     MINIMAL_ANSWER_NEEDS_CHOICE = "minimal_answer_needs_choice"
     META_QUESTION_ANSWERED = "meta_question_answered"
     VISUAL_LOAD_HIGH = "visual_load_high"
+    AUDIO_TURN_INCOMPLETE = "audio_turn_incomplete"
     GROQ_LED_TURN = "groq_led_turn"
     CLASS_LEVEL_PERFORMANCE_MISSING = "class_level_performance_missing"
     EVALUATION_EVIDENCE_MISSING = "evaluation_evidence_missing"
@@ -89,11 +90,25 @@ class ReplyFallbackReason(str, Enum):
     OFF_TOPIC_REPLY = "off_topic_reply"
 
 
+class TurnReadiness(str, Enum):
+    """Audio-derived turn state, mirroring the browser classifier."""
+
+    UNAVAILABLE = "unavailable"
+    SPEAKING = "speaking"
+    LISTENING = "listening"
+    THINKING_PAUSE = "thinking_pause"
+    READY = "ready"
+
+
 class ExplicitSignals(DomainModel):
     hint_requested: bool = False
     thinking_time_requested: bool = False
     stop_requested: bool = False
     meta_question_asked: bool = False
+    # Audio evidence. None means the microphone was unavailable or not used,
+    # which must behave exactly like text-only.
+    turn_readiness: TurnReadiness | None = None
+    trailing_silence_ms: int | None = Field(default=None, ge=0)
 
 
 class InputType(str, Enum):
@@ -183,6 +198,7 @@ class SessionState(DomainModel):
     last_action: DialogueAction | None = None
     clarifications_asked: int = Field(default=0, ge=0)
     give_space_offered: int = Field(default=0, ge=0)
+    audio_waits_offered: int = Field(default=0, ge=0)
     recent_replies: list[str] = Field(default_factory=list)
     conversation: list[dict[str, str]] = Field(default_factory=list)
     cv_text: str | None = None

@@ -45,6 +45,11 @@ def apply_decision(state: SessionState, decision: ActionDecision) -> SessionStat
                 else state.clarifications_asked
                 + int(decision.action == DialogueAction.REQUEST_CLARIFICATION)
             ),
+            "audio_waits_offered": state.audio_waits_offered
+            + int(
+                decision.action == DialogueAction.WAIT
+                and decision.reason == DecisionReason.AUDIO_TURN_INCOMPLETE
+            ),
             "give_space_offered": state.give_space_offered
             + int(decision.action == DialogueAction.GIVE_SPACE),
             "last_action": decision.action,
