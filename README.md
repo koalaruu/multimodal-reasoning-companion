@@ -315,9 +315,23 @@ splits facts from advice on purpose:
 | `suggestions` | Groq prose from those facts | no — advice, labelled as model output |
 | `questions_to_ask` | Groq prose from the job description and CV | no — same |
 
-If Groq is unavailable, `covered` and `missing` are unchanged and
-`suggestions` falls back to deterministic text derived from `missing`, with
-`review_source=local_fallback` and an explicit reason.
+Without a configured reviewer, `review_source=local`. If a Groq request fails,
+`review_source=local_fallback` includes `fallback_reason`. In both cases,
+`covered` and `missing` are unchanged and local suggestions come from `missing`.
+
+The UI distinguishes local mode from a failed cloud review and explains:
+
+| Reason | Meaning |
+|---|---|
+| `timeout` | Groq did not finish within the configured request deadline |
+| `sdk_error` | The provider request failed; inspect the backend log's exception type and HTTP status, if available |
+| `malformed_output` | The response could not be parsed as the review schema |
+
+For SDK errors, backend warnings record only the exception class and HTTP status
+(for example, 401 for authentication, 429 for rate limits, or 5xx for provider
+errors). Other warnings record the reason only. They never log exception messages,
+response bodies, CV text, prompts, chat text, or API keys. The existing review
+button allows a manual retry; no automatic retries or source relabelling are used.
 
 The UI shows a **Review this session** button once two turns have been
 answered. Covered items render in green, missing in amber, so the gap is
@@ -564,7 +578,7 @@ This is an integration benchmark, not evidence of demographic fairness, webcam r
 
 - Candidate text is processed in memory and is not stored in `SessionState` or default logs.
 - Groq receives candidate text only when an API key is configured and the selected action is eligible. Review Groq's data handling terms before using real interview content.
-- Logs contain reply source and fallback reason only, not candidate text, prompts, response bodies, API keys, audio, or exception messages.
+- Logs contain reply source and fallback reason; review failures may also include the exception class and HTTP status. Candidate text, prompts, response bodies, API keys, audio, and exception messages are excluded.
 - Voice-activity samples remain in browser memory and are never recorded by the timing path.
 - Voice-answer recording requires a separate explicit click. The clip is sent only to local FastAPI, bounded by size and decoded duration, processed in memory, and not persisted.
 - Microphone denial or transcription failure leaves the complete text workflow available.
