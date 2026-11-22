@@ -176,6 +176,9 @@ class TestGroqReviewer:
             session_id="r6",
             cv_text="Built a churn model.",
             job_description="Requires deployment experience.",
+            conversation=[
+                {"role": "candidate", "content": "Saya membangun model churn."},
+            ],
             target_role="ML Engineer Intern",
         )
 
@@ -189,6 +192,48 @@ class TestGroqReviewer:
         assert context["target_role"] == "ML Engineer Intern"
         assert "deployment experience" in context["job_description"]
         assert "churn model" in context["cv_summary"]
+        assert context["conversation"] == state.conversation
+
+    def test_long_context_fits_request_budget_and_keeps_recent_turns(self) -> None:
+        # A character cap alone misses multi-byte text and JSON escaping.
+        long_text = '"\\\x01📱wawancara ' * 1_000
+        latest_answer = {"role": "candidate", "content": "Saya menguji alur offline."}
+        latest_question = {"role": "interviewer", "content": "Apa hasilnya?"}
+        state = SessionState(
+            session_id="long-review",
+            turn_index=12,
+            target_role="Flutter Developer " + long_text,
+            job_description="Build reliable offline flows. " + long_text,
+            cv_text="Built a Flutter app. " + long_text,
+            conversation=[
+                {"role": "candidate", "content": f"Answer {i}: {long_text}"}
+                for i in range(11)
+            ] + [latest_answer, latest_question],
+        )
+        client = FakeClient(response_with_content(json.dumps({
+            "suggestions": ["Quantify the offline test result."],
+            "questions_to_ask": [],
+        })))
+
+        review = GroqReviewer(client=client).review(
+            state=state, covered=["a specific work example"], missing=["a concrete outcome"],
+        )
+
+        assert review.review_source == ReplySource.GROQ
+        assert review.turns == 12
+        assert review.covered == ["a specific work example"]
+        assert review.missing == ["a concrete outcome"]
+        prompt = client.chat.completions.calls[0]["messages"][1]["content"]
+        assert len(prompt.encode("utf-8")) <= 6_600
+        context = json.loads(prompt)
+        assert context["target_role"].startswith("Flutter Developer ")
+        assert context["job_description"].startswith("Build reliable offline flows. ")
+        assert context["cv_summary"].startswith("Built a Flutter app. ")
+        assert context["conversation"][-2:] == [latest_answer, latest_question]
+        assert context["conversation"][-3]["content"].startswith("Answer 10: ")
+        assert context["conversation"][-3]["content"].endswith("…")
+        assert all(not message["content"].startswith("Answer 0: ") for message in context["conversation"])
+        assert state.conversation[-3]["content"] == f"Answer 10: {long_text}"
 
     def test_sdk_failure_keeps_private_payload_out_of_logs_and_response(
         self, caplog: pytest.LogCaptureFixture

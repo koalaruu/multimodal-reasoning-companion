@@ -380,6 +380,13 @@ misread. Bare version numbers, years, and identifiers are not outcome evidence.
 The existing 12-case ML-focused benchmark is a regression check, not evidence
 of general job-role coverage or real-world interview-assessment accuracy.
 
+For Groq advice, the backend budgets the UTF-8 size of the serialized prompt.
+It keeps recent interview messages in order and excerpts long messages and
+application context. This prevents oversized review requests like the HTTP 413
+observed on Groq's free tier. The full session history is unchanged, and
+`covered` and `missing` still use all accumulated answer cues. This does not
+prevent rate limits from other recent requests sharing the same quota.
+
 Without a configured reviewer, `review_source=local`. If a Groq request fails,
 `review_source=local_fallback` includes `fallback_reason`. In both cases,
 `covered` and `missing` are unchanged and local suggestions come from `missing`.
