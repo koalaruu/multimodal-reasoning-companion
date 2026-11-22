@@ -23,6 +23,23 @@ class DialogueAction(str, Enum):
     REQUEST_CLARIFICATION = "request_clarification"
 
 
+
+class EmotionLabel(str, Enum):
+    """Proxy emotion labels derived from FACS AU combinations.
+
+    Mapping follows Ekman & Friesen (1978) documented AU-emotion
+    combinations. See README references for citation and limitations.
+    """
+
+    NEUTRAL = "neutral"
+    HAPPY = "happy"
+    SAD = "sad"
+    SURPRISED = "surprised"
+    ANGRY = "angry"
+    DISGUSTED = "disgusted"
+    FEARFUL = "fearful"
+    UNCERTAIN = "uncertain"
+
 class DecisionReason(str, Enum):
     SESSION_ALREADY_ENDED = "session_already_ended"
     EXPLICIT_STOP_REQUEST = "explicit_stop_request"
@@ -100,6 +117,50 @@ class ContentEvidence(DomainModel):
         return self
 
 
+class BlendshapeReading(DomainModel):
+    """A single MediaPipe blendshape value."""
+
+    name: str
+    score: float = Field(ge=0.0, le=1.0)
+
+
+class VisionObservation(DomainModel):
+    """Raw perceptual input from MediaPipe Face Landmarker.
+
+    face_available=false means no face was detected; downstream
+    consumers must treat emotional_state as unavailable, not neutral.
+    """
+
+    face_available: bool
+    face_count: int = Field(default=0, ge=0)
+    inference_ms: float | None = None
+    observed_at_ms: int | None = None
+    blendshapes: list[BlendshapeReading] = Field(default_factory=list)
+
+
+class EmotionalState(DomainModel):
+    """Proxy emotional state derived from FACS AU mapping.
+
+    All scores are in [0.0, 1.0] and represent the strength of
+    AU-combination evidence, NOT a direct measurement of internal
+    mental state. See README for scientific limitations.
+    """
+
+    dominant_emotion: EmotionLabel = EmotionLabel.NEUTRAL
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    emotion_scores: dict[str, float] = Field(default_factory=dict)
+    activated_aus: list[str] = Field(default_factory=list)
+    face_available: bool = False
+
+
+class EmotionalStateHistory(DomainModel):
+    """Moving-average emotional state across recent observations."""
+
+    current: EmotionalState
+    window_size: int = Field(default=5, ge=1, le=20)
+    samples: int = Field(default=0, ge=0)
+
+
 class SessionState(DomainModel):
     session_id: str
     status: SessionStatus = SessionStatus.ACTIVE
@@ -107,6 +168,7 @@ class SessionState(DomainModel):
     hints_offered: int = Field(default=0, ge=0)
     followups_asked: int = Field(default=0, ge=0)
     last_action: DialogueAction | None = None
+    emotional_state: EmotionalState | None = None
 
     @field_validator("session_id")
     @classmethod

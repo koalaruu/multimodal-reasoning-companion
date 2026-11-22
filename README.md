@@ -205,11 +205,51 @@ This endpoint is clip-based rather than streaming: no audio is uploaded until re
 
 ## Local visual perception
 
-**Enable camera** requests browser camera permission and starts MediaPipe Face Landmarker in `VIDEO` mode at no more than five inferences per second. The application reports only directly observable outputs: model availability, face count, inference latency, and up to three raw blendshape coefficients when exactly one face is visible. Coefficients are suppressed for multiple faces to avoid ambiguous attribution.
+**Enable camera** requests browser camera permission and starts MediaPipe Face Landmarker in `VIDEO` mode at no more than five inferences per second. The application reports model availability, face count, inference latency, up to five raw blendshape coefficients, and a proxy emotional state when exactly one face is visible. Coefficients and emotional state are suppressed for multiple faces to avoid ambiguous attribution.
 
-All frame processing occurs in the browser. Frames, landmarks, and coefficients are not sent to FastAPI, Groq, storage, or application logs. **Stop camera**, **Reset session**, and component unmount stop every camera track and close the Face Landmarker runtime. Camera denial, missing hardware, model-loading failure, or inference failure leaves text and audio available.
+Blendshape coefficients are sent to the local FastAPI backend once per second for FACS proxy mapping. Frames themselves are not uploaded; only the 52 blendshape values (name and score) are transmitted. The backend maps them to FACS action unit proxies following Ekman & Friesen (1978) documented AU-emotion combinations and returns a dominant emotion label with confidence.
 
-This baseline deliberately does not map facial movement to mood, stress, focus, honesty, competence, or hiring suitability. Visual observations are displayed for system transparency but do not change the dialogue policy. A separate held-out vision benchmark is required before testing any multimodal policy rule.
+All frame processing occurs in the browser. Frames are not sent to FastAPI, Groq, storage, or application logs. Blendshape coefficients are sent only to the local backend and are not persisted. **Stop camera**, **Reset session**, and component unmount stop every camera track and close the Face Landmarker runtime. Camera denial, missing hardware, model-loading failure, or inference failure leaves text and audio available.
+
+The emotional state is attached to `SessionState` and provided to the Groq LLM as advisory context with an explicit note that it is not a validated mental-state measurement. The LLM is instructed to adjust tone subtly if appropriate but never to state that the candidate is stressed, confused, or emotional. The dialogue policy remains deterministic; emotional state does not change the action selected.
+
+### Scientific basis and limitations
+
+The FACS AU-emotion mapping follows the documented combinations published by Ekman & Friesen:
+
+- Happy: AU6 + AU12
+- Sad: AU1 + AU4 + AU15
+- Surprised: AU1 + AU2 + AU5 + AU27
+- Fearful: AU1 + AU2 + AU5 + AU27 (disambiguated from surprise by AU4 presence)
+- Angry: AU4 + AU5 + AU7 + AU23
+- Disgusted: AU9 + AU15 + AU16
+
+MediaPipe blendshapes are not 1:1 with FACS action units. Each mapping is a best-effort proxy based on anatomical correspondence. The activation threshold (0.15) is a tunable heuristic, not a validated psychometric cutoff.
+
+**Pilot validation** uses synthetic idealized blendshape fixtures and Cohen's kappa against expected labels. Run:
+
+```powershell
+python -m eval.validate_emotion_mapping
+```
+
+This pilot achieved kappa = 1.0 on idealized fixtures, which only confirms that the mapping logic is internally consistent. It does **not** establish performance on real faces, non-frontal angles, lighting variation, skin-tone diversity, cultural expression differences, or spontaneous (non-posed) expressions.
+
+**Known limitations acknowledged in this project:**
+
+1. FER accuracy drops sharply in non-idealized conditions (Cabitza et al., 2022; Cross et al., 2023).
+2. Inferring emotion from facial movement alone is theoretically contested (Feldman Barrett et al., 2019).
+3. The mapping uses two layers of approximation: blendshape → AU proxy → emotion.
+4. AU23 (Lip Tightener) is approximated from `mouthClose` + `lipPress` blendshapes.
+5. Surprise and fear share the same AU set; disambiguation by AU4 is a simplification.
+
+**References:**
+
+- Ekman, P. & Friesen, W.V. (1978). *Facial Action Coding System*. Consulting Psychologist Press.
+- Attrah, S. (2025). Emotion estimation from video footage with LSTM. *Frontiers in Neurorobotics*, 19. doi:10.3389/fnbot.2025.1678984
+- Cabitza, F., Campagner, A. & Mattioli, M. (2022). The unbearable (technical) unreliability of automated facial emotion recognition. *Big Data & Society*, 9(2). doi:10.1177/20539517221129549
+- Cross, M.P., Acevedo, A.M. & Hunter, J.F. (2023). A Critique of Automated Approaches to Code Facial Expressions. *Affective Science*, 4(3), 500-505. doi:10.1007/s42761-023-00195-0
+- Feldman Barrett, L. et al. (2019). Emotional expressions reconsidered. *Psychological Science in the Public Interest*, 20(1), 1-68. doi:10.1177/1529100619832930
+- Cohen, J. (1960). A coefficient of agreement for nominal scales. *Educational and Psychological Measurement*, 20(1), 37-46.
 
 ## Evaluation
 

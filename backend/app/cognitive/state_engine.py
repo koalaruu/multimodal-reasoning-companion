@@ -5,6 +5,7 @@ from __future__ import annotations
 from backend.app.schemas import (
     ActionDecision,
     DialogueAction,
+    EmotionalState,
     SessionState,
     SessionStatus,
 )
@@ -28,3 +29,12 @@ def apply_decision(state: SessionState, decision: ActionDecision) -> SessionStat
             "last_action": decision.action,
         }
     )
+
+
+def update_emotional_state(
+    state: SessionState,
+    emotional_state: EmotionalState,
+) -> SessionState:
+    """Attach or replace the emotional state on a session without mutating."""
+
+    return state.model_copy(update={"emotional_state": emotional_state})

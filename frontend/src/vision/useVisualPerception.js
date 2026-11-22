@@ -4,8 +4,12 @@ import {
   summarizeFaceLandmarkerResult,
   unavailableVisualObservation,
 } from "./visualObservation.js";
+import { analyzeVision } from "../services/interviewApi.js";
 
 const INFERENCE_INTERVAL_MS = 200;
+const VISION_UPLOAD_INTERVAL_MS = 1000;
+
+
 const CAMERA_CONSTRAINTS = {
   audio: false,
   video: {
@@ -35,9 +39,11 @@ export default function useVisualPerception() {
   const [observation, setObservation] = useState(
     unavailableVisualObservation(),
   );
+  const [emotionalState, setEmotionalState] = useState(null);
   const videoRef = useRef(null);
   const resourcesRef = useRef(null);
   const operationRef = useRef(0);
+  const lastUploadRef = useRef(0);
 
   const releaseResources = useCallback((target = resourcesRef.current) => {
     if (!target) return;
@@ -144,6 +150,17 @@ export default function useVisualPerception() {
                 observedAtMs: Date.now(),
               }),
             );
+
+            if (
+              timestamp - lastUploadRef.current >= VISION_UPLOAD_INTERVAL_MS
+            ) {
+              lastUploadRef.current = timestamp;
+              const obs = summarizeFaceLandmarkerResult(result, {
+                inferenceMs: performance.now() - startedAt,
+                observedAtMs: Date.now(),
+              });
+              analyzeVision({ observation: obs }).then(setEmotionalState).catch(() => {});
+            }
           } catch {
             operationRef.current += 1;
             releaseResources(resources);
@@ -181,5 +198,5 @@ export default function useVisualPerception() {
     [releaseResources],
   );
 
-  return { observation, videoRef, enableCamera, disableCamera };
+  return { observation, emotionalState, videoRef, enableCamera, disableCamera };
 }

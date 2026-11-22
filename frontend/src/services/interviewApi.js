@@ -59,3 +59,28 @@ export async function transcribeAudio({ audio, signal }) {
   }
   return result;
 }
+
+export async function analyzeVision({ observation, signal }) {
+  const response = await fetch(`${API_BASE_URL}/v1/vision/analyze`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      face_available: observation.face_available,
+      face_count: observation.face_count,
+      inference_ms: observation.inference_ms,
+      observed_at_ms: observation.observed_at_ms,
+      blendshapes: observation.blendshapes,
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Vision analysis failed (${response.status}).`);
+  }
+
+  const result = await response.json();
+  if (result.emotional_state == null) {
+    throw new Error("Vision service returned an invalid response.");
+  }
+  return result.emotional_state;
+}

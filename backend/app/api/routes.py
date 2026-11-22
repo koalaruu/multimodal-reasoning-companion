@@ -12,6 +12,8 @@ from backend.app.api.schemas import (
     HealthResponse,
     InterviewTurnRequest,
     TranscriptionResponse,
+    VisionAnalyzeRequest,
+    VisionAnalyzeResponse,
 )
 from backend.app.perception.speech_to_text import (
     AudioTooLongError,
@@ -20,7 +22,8 @@ from backend.app.perception.speech_to_text import (
     NoSpeechDetectedError,
     TranscriberUnavailableError,
 )
-from backend.app.schemas import TurnResult
+from backend.app.schemas import TurnResult, VisionObservation
+from backend.app.perception.vision_analyzer import analyze as analyze_vision
 from backend.app.service import InterviewService
 
 router = APIRouter()
@@ -163,3 +166,37 @@ def process_interview_turn(
         state=request_body.state,
         candidate_input=request_body.candidate_input,
     )
+
+
+@router.post(
+    "/v1/vision/analyze",
+    response_model=VisionAnalyzeResponse,
+    tags=["vision"],
+)
+def analyze_vision_endpoint(
+    request_body: VisionAnalyzeRequest,
+) -> VisionAnalyzeResponse:
+    """Map blendshape readings to a proxy emotional state via FACS rules.
+
+    This endpoint is stateless and does not store frames or blendshapes.
+    See README for scientific limitations of FACS-based emotion inference.
+    """
+    from backend.app.schemas import BlendshapeReading
+
+    readings = [
+        BlendshapeReading(
+            name=str(item.get("categoryName", item.get("name", ""))),
+            score=float(item.get("score", 0.0)),
+        )
+        for item in request_body.blendshapes
+        if isinstance(item, dict)
+    ]
+    observation = VisionObservation(
+        face_available=request_body.face_available,
+        face_count=request_body.face_count,
+        inference_ms=request_body.inference_ms,
+        observed_at_ms=request_body.observed_at_ms,
+        blendshapes=readings,
+    )
+    emotional_state = analyze_vision(observation)
+    return VisionAnalyzeResponse(emotional_state=emotional_state)
