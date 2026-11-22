@@ -17,6 +17,7 @@ export default function DecisionMonitor({
   onReset,
   audioObservation,
   audioReadiness,
+  visualObservation,
 }) {
   const decision = result?.decision;
   const evidence = result?.content_evidence;
@@ -142,6 +143,40 @@ export default function DecisionMonitor({
           attention measurement.
         </p>
       </section>
+      <section className="vision-evidence-card">
+        <h3>Visual perception evidence</h3>
+        <dl className="session-grid">
+          <div>
+            <dt>Availability</dt>
+            <dd>{readable(visualObservation.availability)}</dd>
+          </div>
+          <div>
+            <dt>Visual cue</dt>
+            <dd>{readable(visualObservation.cue)}</dd>
+          </div>
+          <div>
+            <dt>Faces</dt>
+            <dd>
+              {visualObservation.availability === "available"
+                ? visualObservation.face_count
+                : "Not observed"}
+            </dd>
+          </div>
+          <div>
+            <dt>Inference</dt>
+            <dd>
+              {visualObservation.inference_ms == null
+                ? "Not observed"
+                : `${visualObservation.inference_ms.toFixed(1)} ms`}
+            </dd>
+          </div>
+        </dl>
+        <p className="observation-note">
+          Face landmarks are observable coefficients, not emotion or attention
+          measurements. They do not change the dialogue policy in this baseline.
+        </p>
+      </section>
+
 
       <section className="session-card">
         <h3>Session state</h3>

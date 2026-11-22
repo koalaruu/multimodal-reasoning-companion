@@ -1,9 +1,11 @@
 import { useState } from "react";
 import useAudioActivity from "./audio/useAudioActivity.js";
 import useVoiceTranscription from "./audio/useVoiceTranscription.js";
+import useVisualPerception from "./vision/useVisualPerception.js";
 import AudioControls from "./components/AudioControls.jsx";
 import ChatBox from "./components/ChatBox.jsx";
 import DecisionMonitor from "./components/DecisionMonitor.jsx";
+import VisualControls from "./components/VisualControls.jsx";
 import { submitInterviewTurn } from "./services/interviewApi.js";
 
 const INTERVIEW_QUESTION =
@@ -40,6 +42,7 @@ export default function App() {
       );
     },
   });
+  const vision = useVisualPerception();
 
   const ended = session.status === "ended";
 
@@ -97,6 +100,7 @@ export default function App() {
     setError("");
     setSending(false);
     audio.disableMicrophone();
+    vision.disableCamera();
   }
 
   return (
@@ -134,8 +138,12 @@ export default function App() {
         voiceResult={voice.result}
         voiceStatus={voice.status}
       />
-
-
+      <VisualControls
+        observation={vision.observation}
+        videoRef={vision.videoRef}
+        onEnable={vision.enableCamera}
+        onDisable={vision.disableCamera}
+      />
       <div className="workspace">
         <ChatBox
           messages={messages}
@@ -151,12 +159,13 @@ export default function App() {
           onReset={handleReset}
           audioObservation={audio.observation}
           audioReadiness={audio.readiness}
+          visualObservation={vision.observation}
         />
       </div>
 
       <footer>
-        Dialogue policy, voice activity, and transcription stay local. Gemini may
-        rewrite eligible replies only.
+        Dialogue policy, voice activity, transcription, and visual perception
+        stay local. Gemini may rewrite eligible replies only.
       </footer>
     </main>
   );
