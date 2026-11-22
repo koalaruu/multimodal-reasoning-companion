@@ -29,12 +29,37 @@ SUPPORTED_GROQ_MODELS = frozenset(
     }
 )
 _MAX_REPLY_LENGTH = 1_200
-_GROQ_ACTIONS = frozenset(
+# Every action is rendered by Groq so wording stays natural, but each has a
+# guard: the model may rephrase, never redirect.
+_GROQ_ACTIONS = frozenset(DialogueAction)
+
+# Tokens that must not appear in a reply for a given action. A reply that
+# violates its guard is discarded and the deterministic local text is used.
+_FORBIDDEN_BY_ACTION: dict[DialogueAction, tuple[str, ...]] = {
+    DialogueAction.END_SESSION: (
+        "describe your project",
+        "tell me about",
+        "what metric",
+        "how did you evaluate",
+    ),
+    DialogueAction.WAIT: (
+        "describe your project",
+        "tell me about",
+        "what metric",
+        "how did you evaluate",
+    ),
+    DialogueAction.ANSWER_META_QUESTION: (
+        "describe your project",
+        "tell me about your",
+    ),
+}
+
+# Question marks that would mean the reply asks something new when the action
+# must not ask anything.
+_NO_QUESTION_ACTIONS = frozenset(
     {
-        DialogueAction.OFFER_HINT,
-        DialogueAction.ASK_FOLLOWUP,
-        DialogueAction.CONTINUE_INTERVIEW,
-        DialogueAction.REQUEST_CLARIFICATION,
+        DialogueAction.END_SESSION,
+        DialogueAction.WAIT,
         DialogueAction.ANSWER_META_QUESTION,
     }
 )
@@ -72,23 +97,50 @@ Rules:
   built and how they evaluated it. Do not introduce unrelated topics such as
   databases, web frameworks, or infrastructure unless the candidate mentioned
   them first.
+  When the reason is minimal_answer_needs_choice, offer a short concrete menu of
+  aspects they could address. Do not ask them to answer the whole question again.
 - For ask_followup: ask one focused follow-up question related to followup_topic.
 - For continue_interview: acknowledge briefly and continue naturally.
   When the reason is topic_advanced_without_detail, do not claim the previous
   answer was complete. Say the point is noted and ask one forward-looking
   question about the same AI/ML project.
 - For request_clarification: ask for a relevant project-and-evaluation answer without judging the candidate.
-  When the reason is meta_question_answered, explain what this drill is for and
-  how to use it. Do not ask an interview question in that reply.
   When the reason is project_example_needed, the candidate already named their
   metrics. Acknowledge that and ask for one concrete project plus what those
   metrics showed. Do not ask them to list metrics again.
+- For answer_meta_question: explain what this practice drill is for and how to
+  use it. Never ask an interview question in that reply and never end with a
+  question mark.
+- For wait: acknowledge that you will wait. Do not ask anything.
+- For end_session: close the practice politely. Do not ask anything, do not
+  request a project description, and do not invite further answers.
+- For request_input: invite the candidate to answer when ready. Do not invent
+  content for them.
 - If emotional_state is provided, treat it as advisory context only. Do not
   state that the candidate is stressed, confused, or emotional. Adjust tone
   subtly if appropriate, but never mention the emotional_state field.
 """
 
 logger = logging.getLogger(__name__)
+
+
+def _respects_action_guard(action: DialogueAction, reply: str) -> bool:
+    """Reject a rephrasing that changes what the action is allowed to do.
+
+    The model may rewrite wording freely, but it must not turn a goodbye into
+    a new question, or an explanation of the drill into an interview prompt.
+    """
+
+    lowered = reply.lower()
+
+    for forbidden in _FORBIDDEN_BY_ACTION.get(action, ()):
+        if forbidden in lowered:
+            return False
+
+    if action in _NO_QUESTION_ACTIONS and "?" in reply:
+        return False
+
+    return True
 
 
 class GroqReplyPayload(BaseModel):
@@ -228,6 +280,10 @@ class GroqReplyGenerator:
         reply = payload.reply.strip()
         if not reply or len(reply) > _MAX_REPLY_LENGTH or "\x00" in reply:
             return self._fallback(local_reply, ReplyFallbackReason.INVALID_REPLY)
+        if not _respects_action_guard(decision.action, reply):
+            return self._fallback(
+                local_reply, ReplyFallbackReason.OFF_TOPIC_REPLY
+            )
         return self._result(reply, ReplySource.GROQ)
 
     def _fallback(

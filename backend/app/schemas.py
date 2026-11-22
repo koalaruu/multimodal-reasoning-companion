@@ -82,6 +82,7 @@ class ReplyFallbackReason(str, Enum):
     SDK_ERROR = "sdk_error"
     MALFORMED_OUTPUT = "malformed_output"
     INVALID_REPLY = "invalid_reply"
+    OFF_TOPIC_REPLY = "off_topic_reply"
 
 
 class ExplicitSignals(DomainModel):

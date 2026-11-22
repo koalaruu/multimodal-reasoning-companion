@@ -96,6 +96,11 @@ def decision_for(action: DialogueAction) -> ActionDecision:
             action=action,
             reason=DecisionReason.EXPLICIT_STOP_REQUEST,
         )
+    if action == DialogueAction.ANSWER_META_QUESTION:
+        return ActionDecision(
+            action=action,
+            reason=DecisionReason.META_QUESTION_ANSWERED,
+        )
     return ActionDecision(
         action=DialogueAction.REQUEST_INPUT,
         reason=DecisionReason.INPUT_MISSING,
@@ -133,19 +138,78 @@ def test_eligible_actions_use_structured_groq_reply(
         DialogueAction.WAIT,
         DialogueAction.END_SESSION,
         DialogueAction.REQUEST_INPUT,
+        DialogueAction.ANSWER_META_QUESTION,
     ],
 )
-def test_control_actions_never_call_groq(action: DialogueAction) -> None:
+def test_control_actions_use_groq_when_reply_respects_guard(
+    action: DialogueAction,
+) -> None:
     client = FakeClient(
-        response=response_with_content('{"reply":"must not be used"}')
+        response=response_with_content('{"reply":"Understood, take your time."}')
+    )
+    generator = GroqReplyGenerator(client=client)
+
+    result = generator.generate(decision_for(action), "candidate", "local")
+
+    assert result.reply == "Understood, take your time."
+    assert result.source == ReplySource.GROQ
+    assert len(client.chat.completions.calls) == 1
+
+
+@pytest.mark.parametrize(
+    ("action", "bad_reply"),
+    [
+        (
+            DialogueAction.END_SESSION,
+            "Could you describe your project before we stop?",
+        ),
+        (
+            DialogueAction.WAIT,
+            "Sure. What metric did you track?",
+        ),
+        (
+            DialogueAction.ANSWER_META_QUESTION,
+            "Tell me about your project and how you evaluated it.",
+        ),
+    ],
+)
+def test_guard_rejects_reply_that_redirects(
+    action: DialogueAction,
+    bad_reply: str,
+) -> None:
+    client = FakeClient(
+        response=response_with_content(
+            '{"reply":"' + bad_reply.replace('"', '\\"') + '"}'
+        )
     )
     generator = GroqReplyGenerator(client=client)
 
     result = generator.generate(decision_for(action), "candidate", "local")
 
     assert result.reply == "local"
-    assert result.source == ReplySource.LOCAL
-    assert client.chat.completions.calls == []
+    assert result.source == ReplySource.LOCAL_FALLBACK
+    assert result.fallback_reason == ReplyFallbackReason.OFF_TOPIC_REPLY
+
+
+@pytest.mark.parametrize(
+    "action",
+    [
+        DialogueAction.WAIT,
+        DialogueAction.END_SESSION,
+        DialogueAction.ANSWER_META_QUESTION,
+    ],
+)
+def test_guard_rejects_trailing_question(
+    action: DialogueAction,
+) -> None:
+    client = FakeClient(
+        response=response_with_content('{"reply":"Understood. Anything else?"}')
+    )
+    generator = GroqReplyGenerator(client=client)
+
+    result = generator.generate(decision_for(action), "candidate", "local")
+
+    assert result.fallback_reason == ReplyFallbackReason.OFF_TOPIC_REPLY
 
 
 def test_missing_api_key_keeps_local_mode() -> None:
