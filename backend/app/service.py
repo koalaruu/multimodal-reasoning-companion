@@ -63,6 +63,31 @@ class InterviewService:
         self._interviewer = interviewer
         self._reviewer = reviewer
 
+    def opening_question(
+        self,
+        *,
+        cv_text: str | None = None,
+        target_role: str | None = None,
+        job_description: str | None = None,
+    ):
+        """First question for this candidate, grounded in CV and posting."""
+
+        local_reply = (
+            "Tell me about an AI project you built. How did you evaluate it?"
+        )
+        if self._interviewer is None or not self._interviewer.available:
+            from backend.app.schemas import ReplySource
+
+            return local_reply, ReplySource.LOCAL
+
+        result = self._interviewer.opening(
+            cv_text=cv_text,
+            target_role=target_role,
+            job_description=job_description,
+            local_reply=local_reply,
+        )
+        return result.reply, result.source
+
     def review_session(self, state: SessionState):
         """Summarize a finished practice session.
 

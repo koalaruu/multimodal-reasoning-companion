@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
 export default function ChatBox({
+  title = "AI project discussion",
   messages,
   draft,
   onDraftChange,
@@ -27,7 +28,7 @@ export default function ChatBox({
       <div className="panel-heading chat-heading">
         <div>
           <p className="eyebrow">Interview practice</p>
-          <h2 id="practice-heading">AI project discussion</h2>
+          <h2 id="practice-heading">{title}</h2>
         </div>
         <span className={`session-status ${ended ? "ended" : "active"}`}>
           {ended ? "Session ended" : "Session active"}

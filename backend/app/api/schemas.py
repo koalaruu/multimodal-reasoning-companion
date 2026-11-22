@@ -6,7 +6,12 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.app.schemas import DomainModel, EmotionalState, SessionState
+from backend.app.schemas import (
+    DomainModel,
+    EmotionalState,
+    ReplySource,
+    SessionState,
+)
 
 
 class HealthResponse(DomainModel):
@@ -26,6 +31,17 @@ class InterviewTurnRequest(DomainModel):
 
 class InterviewReviewRequest(DomainModel):
     state: SessionState
+
+
+class InterviewOpeningRequest(DomainModel):
+    cv_text: str | None = None
+    target_role: str | None = None
+    job_description: str | None = None
+
+
+class InterviewOpeningResponse(DomainModel):
+    reply: str = Field(min_length=1)
+    reply_source: ReplySource
 
 
 class CvUploadResponse(DomainModel):

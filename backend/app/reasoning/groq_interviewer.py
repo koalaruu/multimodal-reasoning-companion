@@ -191,6 +191,80 @@ class GroqInterviewer:
             timeout_seconds=timeout_seconds,
         )
 
+    def opening(
+        self,
+        *,
+        cv_text: str | None = None,
+        target_role: str | None = None,
+        job_description: str | None = None,
+        local_reply: str,
+    ) -> ConversationalReply:
+        """Write the first interview question for this candidate.
+
+        A fixed opening question ignores the CV and posting, which is exactly
+        what the interviewer is supposed to use.
+        """
+
+        if self._client is None:
+            return ConversationalReply(local_reply, ReplySource.LOCAL)
+
+        context: dict[str, object] = {"turn": "opening"}
+        if target_role:
+            context["target_role"] = target_role
+        if job_description:
+            context["job_description"] = job_description[:_MAX_JD_CHARS_IN_PROMPT]
+        if cv_text:
+            context["cv_summary"] = cv_text[:_MAX_CV_CHARS_IN_PROMPT]
+
+        payload = json.dumps(context, ensure_ascii=False)
+        try:
+            response = self._client.chat.completions.create(
+                model=self._model,
+                messages=[
+                    {"role": "system", "content": _INTERVIEWER_SYSTEM},
+                    {"role": "user", "content": payload},
+                ],
+                temperature=0.6,
+                max_completion_tokens=300,
+                reasoning_effort="low",
+                include_reasoning=False,
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "interviewer_turn",
+                        "strict": True,
+                        "schema": InterviewerTurn.model_json_schema(),
+                    },
+                },
+            )
+        except (TimeoutError, groq.APITimeoutError):
+            return ConversationalReply(
+                local_reply, ReplySource.LOCAL_FALLBACK, ReplyFallbackReason.TIMEOUT
+            )
+        except Exception:
+            return ConversationalReply(
+                local_reply, ReplySource.LOCAL_FALLBACK, ReplyFallbackReason.SDK_ERROR
+            )
+
+        try:
+            content = response.choices[0].message.content
+            if not isinstance(content, str):
+                raise ValueError("content must be text")
+            parsed = InterviewerTurn.model_validate_json(content)
+        except (AttributeError, IndexError, TypeError, ValidationError, ValueError):
+            return ConversationalReply(
+                local_reply,
+                ReplySource.LOCAL_FALLBACK,
+                ReplyFallbackReason.MALFORMED_OUTPUT,
+            )
+
+        reply = parsed.reply.strip()
+        if not reply or len(reply) > _MAX_REPLY_LENGTH or "\x00" in reply:
+            return ConversationalReply(
+                local_reply, ReplySource.LOCAL_FALLBACK, ReplyFallbackReason.INVALID_REPLY
+            )
+        return ConversationalReply(reply, ReplySource.GROQ)
+
     def respond(
         self,
         *,

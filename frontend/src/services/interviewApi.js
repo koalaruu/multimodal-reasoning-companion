@@ -2,6 +2,24 @@ const API_BASE_URL = (
   import.meta.env?.VITE_API_BASE_URL ?? "http://127.0.0.1:8000"
 ).replace(/\/$/, "");
 
+export async function fetchOpeningQuestion({ cvText, targetRole, jobDescription, signal }) {
+  const response = await fetch(`${API_BASE_URL}/v1/interview/opening`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...(cvText ? { cv_text: cvText } : {}),
+      ...(targetRole ? { target_role: targetRole } : {}),
+      ...(jobDescription ? { job_description: jobDescription } : {}),
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Opening question failed (${response.status}).`);
+  }
+  return response.json();
+}
+
 export async function fetchSessionReview({ state, signal }) {
   const response = await fetch(`${API_BASE_URL}/v1/interview/review`, {
     method: "POST",

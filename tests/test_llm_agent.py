@@ -156,6 +156,37 @@ class TestGroqInterviewer:
         assert "Macro-F1 0.81" in context["cv_summary"]
         assert context["conversation"][0]["content"] == "hi"
 
+    def test_opening_uses_cv_and_posting(self) -> None:
+        client = FakeClient(
+            response_with_content(reply_json("Which deployment did you own?"))
+        )
+        result = GroqInterviewer(client=client).opening(
+            cv_text="Built a fraud model with XGBoost.",
+            target_role="MLE Intern",
+            job_description="Requires production deployment.",
+            local_reply="fallback",
+        )
+
+        assert result.reply == "Which deployment did you own?"
+        assert result.source == ReplySource.GROQ
+        context = context_of(client)
+        assert context["turn"] == "opening"
+        assert "production deployment" in context["job_description"]
+        assert "XGBoost" in context["cv_summary"]
+
+    def test_opening_without_client_uses_local(self) -> None:
+        result = GroqInterviewer().opening(local_reply="local opening")
+
+        assert result.reply == "local opening"
+        assert result.source == ReplySource.LOCAL
+
+    def test_opening_falls_back_on_sdk_error(self) -> None:
+        client = FakeClient(error=RuntimeError("down"))
+        result = GroqInterviewer(client=client).opening(local_reply="local")
+
+        assert result.source == ReplySource.LOCAL_FALLBACK
+        assert result.fallback_reason == ReplyFallbackReason.SDK_ERROR
+
     def test_job_description_reaches_the_prompt(self) -> None:
         client = FakeClient(response_with_content(reply_json("Which metric?")))
         GroqInterviewer(client=client).respond(

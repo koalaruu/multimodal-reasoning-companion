@@ -1064,3 +1064,7 @@ footer {
 .review-list.missing li::marker {
   color: #a2664f;
 }
+
+.opening-control .primary-button {
+  margin-top: 4px;
+}

@@ -11,6 +11,8 @@ from starlette.concurrency import run_in_threadpool
 from backend.app.api.schemas import (
     CvUploadResponse,
     HealthResponse,
+    InterviewOpeningRequest,
+    InterviewOpeningResponse,
     InterviewReviewRequest,
     InterviewTurnRequest,
     TranscriptionResponse,
@@ -187,6 +189,24 @@ def process_interview_turn(
         turn_readiness=request_body.turn_readiness,
         trailing_silence_ms=request_body.trailing_silence_ms,
     )
+
+
+@router.post(
+    "/v1/interview/opening",
+    response_model=InterviewOpeningResponse,
+    tags=["interview"],
+)
+def interview_opening(
+    request_body: InterviewOpeningRequest,
+    service: Annotated[InterviewService, Depends(get_interview_service)],
+) -> InterviewOpeningResponse:
+    """First question for this candidate, grounded in CV and posting."""
+    reply, source = service.opening_question(
+        cv_text=request_body.cv_text,
+        target_role=request_body.target_role,
+        job_description=request_body.job_description,
+    )
+    return InterviewOpeningResponse(reply=reply, reply_source=source)
 
 
 @router.post(

@@ -9,7 +9,10 @@ import CvUpload from "./components/CvUpload.jsx";
 import SessionReview from "./components/SessionReview.jsx";
 import { deriveTurnReadiness } from "./audio/turnReadiness.js";
 import VisualControls from "./components/VisualControls.jsx";
-import { submitInterviewTurn } from "./services/interviewApi.js";
+import {
+  fetchOpeningQuestion,
+  submitInterviewTurn,
+} from "./services/interviewApi.js";
 
 const INTERVIEW_QUESTION =
   "Tell me about an AI project you built. How did you evaluate it?";
@@ -44,6 +47,7 @@ export default function App() {
   const [cv, setCv] = useState(null);
   const [targetRole, setTargetRole] = useState("");
   const [jobDescription, setJobDescription] = useState("");
+  const [openingBusy, setOpeningBusy] = useState(false);
   const audio = useAudioActivity();
   const voice = useVoiceTranscription({
     getStream: audio.getStream,
@@ -107,6 +111,41 @@ export default function App() {
   function handleDisableMicrophone() {
     voice.cancel();
     audio.disableMicrophone();
+  }
+
+  async function handleGenerateOpening() {
+    setOpeningBusy(true);
+    setError("");
+    try {
+      const result = await fetchOpeningQuestion({
+        cvText: cv?.text,
+        targetRole: targetRole.trim(),
+        jobDescription: jobDescription.trim(),
+      });
+      setMessages((current) => {
+        const rest = current.slice(1);
+        return [
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            text: result.reply,
+            source: result.reply_source,
+          },
+          ...rest,
+        ];
+      });
+      setSession((current) => ({
+        ...current,
+        conversation: [
+          { role: "interviewer", content: result.reply },
+          ...(current.conversation ?? []).slice(1),
+        ],
+      }));
+    } catch (openingError) {
+      setError(openingError.message);
+    } finally {
+      setOpeningBusy(false);
+    }
   }
 
   function handleReset() {
@@ -174,12 +213,31 @@ export default function App() {
         onEnable={vision.enableCamera}
         onDisable={vision.disableCamera}
       />
+      <section className="panel opening-control">
+        <header className="panel-heading">
+          <p className="eyebrow">Start here</p>
+          <h2>Opening question</h2>
+          <p className="panel-subtitle">
+            Fill the role, job description, and CV first, then generate the
+            opening question so it targets your real background.
+          </p>
+        </header>
+        <button
+          type="button"
+          className="primary-button"
+          onClick={handleGenerateOpening}
+          disabled={openingBusy || sending || ended}
+        >
+          {openingBusy ? "Generating…" : "Generate opening question"}
+        </button>
+      </section>
       <SessionReview
         session={session}
         disabled={session.turn_index < 2 || sending}
       />
       <div className="workspace">
         <ChatBox
+          title={targetRole.trim() || "Interview practice"}
           messages={messages}
           draft={draft}
           onDraftChange={setDraft}
