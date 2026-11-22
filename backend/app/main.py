@@ -12,6 +12,7 @@ from backend.app.perception.speech_to_text import (
     create_transcriber,
 )
 from backend.app.reasoning.groq_interviewer import GroqInterviewer
+from backend.app.reasoning.session_review import GroqReviewer
 from backend.app.service import InterviewService
 
 _ALLOWED_ORIGINS = (
@@ -37,7 +38,10 @@ def create_app(
     app.state.interview_service = (
         interview_service
         if interview_service is not None
-        else InterviewService(interviewer=GroqInterviewer.from_env())
+        else InterviewService(
+            interviewer=GroqInterviewer.from_env(),
+            reviewer=GroqReviewer.from_env(),
+        )
     )
     app.state.audio_transcriber = (
         audio_transcriber

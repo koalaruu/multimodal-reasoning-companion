@@ -22,6 +22,10 @@ class InterviewTurnRequest(DomainModel):
     job_description: str | None = None
 
 
+class InterviewReviewRequest(DomainModel):
+    state: SessionState
+
+
 class CvUploadResponse(DomainModel):
     filename: str
     characters: int = Field(ge=0)

@@ -216,6 +216,23 @@ class ActionDecision(DomainModel):
         return self
 
 
+class SessionReview(DomainModel):
+    """Post-session summary.
+
+    covered and missing are derived deterministically from the accumulated
+    evidence booleans, so they can be defended. suggestions and
+    questions_to_ask are model-written prose and are labelled as such.
+    """
+
+    turns: int = Field(ge=0)
+    covered: list[str] = Field(default_factory=list)
+    missing: list[str] = Field(default_factory=list)
+    suggestions: list[str] = Field(default_factory=list)
+    questions_to_ask: list[str] = Field(default_factory=list)
+    review_source: ReplySource = ReplySource.LOCAL
+    fallback_reason: ReplyFallbackReason | None = None
+
+
 class TurnResult(DomainModel):
     signals: ExplicitSignals
     content_evidence: ContentEvidence

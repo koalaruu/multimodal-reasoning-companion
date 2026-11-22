@@ -270,6 +270,26 @@ clear error because they need OCR first.
 If no `GROQ_API_KEY` is configured, the app falls back to the deterministic
 text pipeline and says so in the transparency panel.
 
+### Session review
+
+`POST /v1/interview/review` summarizes a finished practice session. The output
+splits facts from advice on purpose:
+
+| Field | Source | Defensible? |
+|---|---|---|
+| `covered` | accumulated evidence booleans | yes — each label traces to a turn |
+| `missing` | the same booleans, inverted | yes |
+| `suggestions` | Groq prose from those facts | no — advice, labelled as model output |
+| `questions_to_ask` | Groq prose from the job description and CV | no — same |
+
+If Groq is unavailable, `covered` and `missing` are unchanged and
+`suggestions` falls back to deterministic text derived from `missing`, with
+`review_source=local_fallback` and an explicit reason.
+
+The UI shows a **Review this session** button once two turns have been
+answered. Covered items render in green, missing in amber, so the gap is
+visible without reading prose.
+
 ### Scientific basis and limitations
 
 The FACS AU-emotion mapping follows the documented combinations published by Ekman & Friesen:
