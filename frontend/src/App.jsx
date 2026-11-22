@@ -13,7 +13,12 @@ const INTERVIEW_QUESTION =
   "Tell me about an AI project you built. How did you evaluate it?";
 
 function createSession() {
-  return { session_id: crypto.randomUUID() };
+  return {
+    session_id: crypto.randomUUID(),
+    conversation: [
+      { role: "interviewer", content: INTERVIEW_QUESTION },
+    ],
+  };
 }
 
 function initialMessages() {
@@ -105,6 +110,8 @@ export default function App() {
     setDraft("");
     setError("");
     setSending(false);
+    setCv(null);
+    setTargetRole("");
     audio.disableMicrophone();
     vision.disableCamera();
   }

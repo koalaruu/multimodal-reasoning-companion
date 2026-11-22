@@ -226,6 +226,31 @@ class TestServiceUsesGroqForConversation:
         assert conversation[0]["content"] == "I built a model."
         assert conversation[2]["content"] == "I used macro-F1."
 
+    def test_seeded_opening_question_reaches_the_prompt(self) -> None:
+        client = FakeClient(response_with_content(reply_json("Which metric?")))
+        opening = "Tell me about an AI project you built."
+        state = SessionState(
+            session_id="seeded",
+            conversation=[{"role": "interviewer", "content": opening}],
+        )
+
+        InterviewService(GroqInterviewer(client=client)).process_turn(
+            state, "evaluasi cv ku"
+        )
+
+        context = context_of(client)
+        assert context["conversation"][0]["content"] == opening
+
+    def test_asking_for_the_answer_is_treated_as_a_hint(self) -> None:
+        client = FakeClient(response_with_content(reply_json("Name one metric.")))
+        result = InterviewService(GroqInterviewer(client=client)).process_turn(
+            SessionState(session_id="give-answer"),
+            "coba beri jawaban atas pertanyaannya",
+        )
+
+        assert result.signals.hint_requested is True
+        assert result.decision.action == DialogueAction.CONVERSE
+
     def test_control_actions_never_call_groq(self) -> None:
         client = FakeClient(response_with_content(reply_json("should not appear")))
         service = InterviewService(GroqInterviewer(client=client))

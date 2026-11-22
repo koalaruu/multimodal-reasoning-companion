@@ -12,6 +12,27 @@ _HINT_PHRASES = (
     "can i have a hint",
     "give me a hint",
     "help me with this",
+    "beri aku hint",
+    "kasih hint",
+    "beri petunjuk",
+    "kasih petunjuk",
+)
+
+# The candidate asking the interviewer to supply the answer itself. This is a
+# hint request in intent, but it must never be answered with a model answer.
+_ANSWER_REQUEST_PHRASES = (
+    "beri jawaban",
+    "kasih jawaban",
+    "berikan jawaban",
+    "jawaban atas pertanyaannya",
+    "jawaban dari pertanyaannya",
+    "contoh jawaban",
+    "jawab pertanyaannya",
+    "jawab sendiri",
+    "give me the answer",
+    "just tell me the answer",
+    "what should i say",
+    "example answer",
 )
 _THINKING_TIME_PHRASES = (
     "give me a moment",
@@ -87,7 +108,10 @@ def extract_explicit_signals(text: str) -> ExplicitSignals:
 
     normalized = _normalize(text)
     return ExplicitSignals(
-        hint_requested=_contains_phrase(normalized, _HINT_PHRASES),
+        hint_requested=(
+            _contains_phrase(normalized, _HINT_PHRASES)
+            or _contains_phrase(normalized, _ANSWER_REQUEST_PHRASES)
+        ),
         thinking_time_requested=_contains_phrase(normalized, _THINKING_TIME_PHRASES),
         stop_requested=_contains_phrase(normalized, _STOP_PHRASES),
         meta_question_asked=(
