@@ -2,11 +2,11 @@
 
 A CPU-first adaptive interview-practice assistant built as an AI systems portfolio project. The project separates observable input processing, internal state, dialogue policy, and response generation so each decision can be tested without relying on one large model.
 
-The current milestone is a **React interview interface with local Faster-Whisper speech-to-text, audio turn-taking cues, and explainable answer-quality evidence**, backed by a stateless FastAPI service with optional Gemini reply generation. Dialogue policy and state updates remain deterministic and fully testable offline; vision is not implemented.
+The current milestone is a **React interview interface with local Faster-Whisper speech-to-text, audio turn-taking cues, opt-in MediaPipe Face Landmarker observations, and explainable answer-quality evidence**, backed by a stateless FastAPI service with optional Gemini reply generation. Dialogue policy and state updates remain deterministic and fully testable offline; visual observations remain local to the browser and do not influence policy.
 
 ## Research question
 
-> Compared with a transcript-only assistant, can speech-activity and optional visual observations later improve when the assistant waits, offers a hint, or asks a follow-up without making unsupported claims about the user's mental state?
+> Compared with a transcript-only assistant, can observable speech-activity and visual signals improve when the assistant waits, offers a hint, or asks a follow-up without making unsupported claims about the user's mental state?
 
 The text baseline establishes the control condition for that future comparison.
 
@@ -15,6 +15,9 @@ The text baseline establishes the control condition for that future comparison.
 ```mermaid
 flowchart LR
     M[Opt-in microphone] --> N[Browser voice<br/>activity detection]
+    V[Opt-in webcam] --> W[MediaPipe Face Landmarker<br/>browser inference]
+    W --> X[Face count and raw<br/>blendshape coefficients]
+    X --> Y[Local visual monitor only]
     N --> L
     M --> O[Explicit MediaRecorder<br/>voice answer]
     O --> P[FastAPI bounded<br/>audio endpoint]
@@ -47,7 +50,7 @@ flowchart LR
 | `reasoning` | Apply one documented policy, render local replies, and optionally request one structured Gemini reply | Allow Gemini to change an action, reason, or state |
 | `service` | Orchestrate one text turn and expose reply source/fallback metadata | Persist transcripts or duplicate policy rules |
 | `api` | Validate text requests and bounded audio streams, then delegate to the correct local component | Store sessions or media, duplicate policy, or expose internal errors |
-| `frontend` | Keep the session in memory, derive voice-activity cues, and record only explicit voice answers | Auto-submit transcripts, persist media, or infer psychological state |
+| `frontend` | Keep the session in memory, derive voice-activity cues, record explicit voice answers, and run opt-in Face Landmarker inference locally | Auto-submit transcripts, upload or persist camera frames, infer psychological state, or let visual observations change policy |
 | `eval` | Exercise deterministic domain and timing behavior | Start Gemini or claim human validity from fixtures |
 
 Control and answer precedence is:
@@ -103,6 +106,8 @@ npm run dev
 ```
 
 Open `http://127.0.0.1:5173`. To use a different backend URL, copy `frontend/.env.example` to `frontend/.env` and change `VITE_API_BASE_URL`.
+
+Camera perception is optional. The browser downloads the versioned Face Landmarker model from Google on first use; the MediaPipe 1.2.3 runtime and Wasm are bundled by Vite.
 
 ### Local speech-to-text
 
@@ -168,7 +173,8 @@ The React client keeps session state and conversation history in memory only. It
 - an evidence and deterministic policy decision monitor;
 - visible `local`, `gemini`, and `local_fallback` reply sources;
 - explicit voice recording that appends a local transcript to the editable answer;
-- a reset action that discards the in-memory transcript and creates a new session;
+- opt-in browser-only face landmarks with face count, inference latency, and the three strongest raw blendshape coefficients;
+- a reset action that stops active sensors, discards the in-memory transcript, and creates a new session;
 - an explicit API connectivity error without exposing backend internals.
 
 The UI does not infer or display stress, mood, focus, personality, or hiring suitability.
@@ -188,6 +194,14 @@ Speech-to-text is a separate, explicit path:
 5. The transcript is appended to **Your answer** for review and editing. Only **Send answer** starts an interview turn.
 
 The backend serializes model inference to avoid concurrent CPU and memory spikes. Errors such as unsupported media, silence, missing runtime, or model failure are returned as safe status messages; text input remains available.
+
+## Local visual perception
+
+**Enable camera** requests browser camera permission and starts MediaPipe Face Landmarker in `VIDEO` mode at no more than five inferences per second. The application reports only directly observable outputs: model availability, face count, inference latency, and up to three raw blendshape coefficients when exactly one face is visible. Coefficients are suppressed for multiple faces to avoid ambiguous attribution.
+
+All frame processing occurs in the browser. Frames, landmarks, and coefficients are not sent to FastAPI, Gemini, storage, or application logs. **Stop camera**, **Reset session**, and component unmount stop every camera track and close the Face Landmarker runtime. Camera denial, missing hardware, model-loading failure, or inference failure leaves text and audio available.
+
+This baseline deliberately does not map facial movement to mood, stress, focus, honesty, competence, or hiring suitability. Visual observations are displayed for system transparency but do not change the dialogue policy. A separate held-out vision benchmark is required before testing any multimodal policy rule.
 
 ## Evaluation
 
@@ -326,7 +340,7 @@ Three clean English public fixtures are integration evidence only. They do not e
 - Voice-answer recording requires a separate explicit click. The clip is sent only to local FastAPI, bounded by size and decoded duration, processed in memory, and not persisted.
 - Microphone denial or transcription failure leaves the complete text workflow available.
 - Missing audio is represented as `unavailable`, never as silence or a neutral psychological state.
-- Text heuristics, audio energy, transcripts, and future facial blendshapes do **not** measure stress, focus, mood, honesty, personality, competence, or hiring suitability.
-- Vision has not been implemented. It remains an optional experiment that must demonstrate measurable value before inclusion.
+- Text heuristics, audio energy, transcripts, and facial blendshapes do **not** measure stress, focus, mood, honesty, personality, competence, or hiring suitability.
+- Camera use is opt-in. Frames remain in browser memory, are never uploaded or persisted, and have no effect on dialogue policy; model acquisition still requires a network request to Google's versioned model asset.
 
 Gemini generates wording only. Local policy retains ownership of `action`, `reason`, `followup_topic`, and all state transitions; control actions remain local even when Gemini is configured.
