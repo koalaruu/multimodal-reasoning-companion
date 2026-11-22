@@ -118,17 +118,46 @@ def test_repeated_unclear_answers_stop_repeating_clarification(
 ) -> None:
     state = SessionState(session_id="repeat", clarifications_asked=2)
 
-    result = service.process_turn(state, "no")
+    result = service.process_turn(state, "I think it was fine somehow.")
 
     assert result.decision.action == DialogueAction.OFFER_HINT
     assert result.decision.reason == DecisionReason.CLARIFICATION_LIMIT_REACHED
     assert "different angle" in result.reply
 
 
+def test_minimal_answer_offers_concrete_choice(
+    service: InterviewService,
+) -> None:
+    result = service.process_turn(SessionState(session_id="bare"), "yes")
+
+    assert result.content_evidence.minimal_answer is True
+    assert result.decision.action == DialogueAction.OFFER_HINT
+    assert result.decision.reason == DecisionReason.MINIMAL_ANSWER_NEEDS_CHOICE
+    assert "Pick one" in result.reply
+
+
+def test_repeated_minimal_answers_advance_the_topic(
+    service: InterviewService,
+) -> None:
+    state = SessionState(session_id="bare-loop")
+
+    first = service.process_turn(state, "yes")
+    second = service.process_turn(first.updated_state, "yes")
+    third = service.process_turn(second.updated_state, "yes")
+
+    assert first.decision.reason == DecisionReason.MINIMAL_ANSWER_NEEDS_CHOICE
+    assert second.decision.reason == DecisionReason.MINIMAL_ANSWER_NEEDS_CHOICE
+    assert third.decision.reason == DecisionReason.TOPIC_ADVANCED_WITHOUT_DETAIL
+    assert third.updated_state.status.value == "active"
+
+
 def test_clarification_counter_increments_on_clarification(
     service: InterviewService,
 ) -> None:
-    result = service.process_turn(SessionState(session_id="counter"), "no")
+    result = service.process_turn(
+        SessionState(session_id="counter"),
+        "I think it was fine somehow.",
+    )
 
     assert result.decision.action == DialogueAction.REQUEST_CLARIFICATION
     assert result.updated_state.clarifications_asked == 1

@@ -81,6 +81,35 @@ _EVALUATION_RESULT = re.compile(
     r"(?:[a-z-]+\s+){0,2}\d+(?:\.\d+)?%?(?!\w)"
 )
 
+# Bare acknowledgements. These carry no project evidence, so repeating the
+# same substantive question at them is what makes the interviewer feel stuck.
+_MINIMAL_ANSWERS = frozenset(
+    {
+        "yes",
+        "yeah",
+        "yep",
+        "yup",
+        "ok",
+        "okay",
+        "sure",
+        "no",
+        "nope",
+        "maybe",
+        "idk",
+        "dunno",
+        "not sure",
+        "i don't know",
+        "i dont know",
+        "saya tidak tahu",
+        "saya kurang tahu",
+        "kurang tahu",
+        "tidak",
+        "iya",
+        "ya",
+        "bisa",
+    }
+)
+
 
 def _normalize(text: str) -> str:
     return " ".join(text.lower().replace("’", "'").split())
@@ -130,6 +159,9 @@ def extract_answer_quality(
     else:
         relevance = AnswerRelevance.IRRELEVANT
 
+    stripped = normalized.strip(" .!?,")
+    minimal_answer = stripped in _MINIMAL_ANSWERS
+
     return ContentEvidence(
         input_type=input_type,
         relevance=relevance,
@@ -139,4 +171,5 @@ def extract_answer_quality(
         macro_f1_mentioned=macro_f1_mentioned,
         class_imbalance_mentioned=class_imbalance_mentioned,
         class_level_performance_mentioned=class_level_performance_mentioned,
+        minimal_answer=minimal_answer,
     )

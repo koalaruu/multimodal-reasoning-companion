@@ -240,6 +240,7 @@ def test_request_uses_policy_context_and_strict_json_schema() -> None:
         "reason": "explicit_hint_request",
         "followup_topic": "none",
         "candidate_input": candidate_input,
+        "required_intent": "local",
     }
     assert call["model"] == DEFAULT_GROQ_MODEL
     assert call["reasoning_effort"] == "low"
@@ -285,7 +286,14 @@ def test_service_keeps_local_decision_and_state_with_groq() -> None:
     ).process_turn(state, candidate_input)
 
     assert groq_result.decision == local_result.decision
-    assert groq_result.updated_state == local_result.updated_state
+    # recent_replies intentionally differs: it stores the reply actually shown.
+    assert (
+        groq_result.updated_state.model_copy(update={"recent_replies": []})
+        == local_result.updated_state.model_copy(update={"recent_replies": []})
+    )
+    assert groq_result.updated_state.recent_replies == [
+        "How was it evaluated?"
+    ]
     assert groq_result.reply_source == ReplySource.GROQ
     assert groq_result.reply == "How was it evaluated?"
 

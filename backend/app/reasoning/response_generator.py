@@ -49,6 +49,11 @@ def generate_local_reply(decision: ActionDecision) -> str:
             "You named the metrics clearly. Now anchor them to one project: "
             "which model was it, and what did those metrics show for that model?"
         )
+    if decision.reason == DecisionReason.MINIMAL_ANSWER_NEEDS_CHOICE:
+        return (
+            "That's a short answer, so let me make it concrete. Pick one: "
+            "the project's goal, the data you used, or the metric you tracked."
+        )
     if decision.reason == DecisionReason.TOPIC_ADVANCED_WITHOUT_DETAIL:
         return (
             "Let's move on and come back to that later. What would you change "

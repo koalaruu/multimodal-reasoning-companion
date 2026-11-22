@@ -52,6 +52,7 @@ class DecisionReason(str, Enum):
     CLARIFICATION_LIMIT_REACHED = "clarification_limit_reached"
     PROJECT_EXAMPLE_NEEDED = "project_example_needed"
     TOPIC_ADVANCED_WITHOUT_DETAIL = "topic_advanced_without_detail"
+    MINIMAL_ANSWER_NEEDS_CHOICE = "minimal_answer_needs_choice"
     CLASS_LEVEL_PERFORMANCE_MISSING = "class_level_performance_missing"
     EVALUATION_EVIDENCE_MISSING = "evaluation_evidence_missing"
     ANSWER_COMPLETE = "answer_complete"
@@ -109,6 +110,7 @@ class ContentEvidence(DomainModel):
     macro_f1_mentioned: bool = False
     class_imbalance_mentioned: bool = False
     class_level_performance_mentioned: bool = False
+    minimal_answer: bool = False
 
     @model_validator(mode="after")
     def validate_relevance(self) -> "ContentEvidence":
@@ -172,6 +174,7 @@ class SessionState(DomainModel):
     followups_asked: int = Field(default=0, ge=0)
     last_action: DialogueAction | None = None
     clarifications_asked: int = Field(default=0, ge=0)
+    recent_replies: list[str] = Field(default_factory=list)
     emotional_state: EmotionalState | None = None
 
     @field_validator("session_id")

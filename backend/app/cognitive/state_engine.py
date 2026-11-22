@@ -11,6 +11,9 @@ from backend.app.schemas import (
     SessionStatus,
 )
 
+# How many prior interviewer replies to keep for anti-repetition context.
+_MAX_RECENT = 4
+
 
 def apply_decision(state: SessionState, decision: ActionDecision) -> SessionState:
     """Return the next state without mutating the supplied state object."""
@@ -43,6 +46,17 @@ def apply_decision(state: SessionState, decision: ActionDecision) -> SessionStat
             ),
             "last_action": decision.action,
         }
+    )
+
+
+def record_reply(state: SessionState, reply: str) -> SessionState:
+    """Keep the last few interviewer replies so wording can avoid repeats."""
+
+    trimmed = reply.strip()
+    if not trimmed:
+        return state
+    return state.model_copy(
+        update={"recent_replies": [*state.recent_replies, trimmed][-_MAX_RECENT:]}
     )
 
 

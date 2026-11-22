@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from backend.app.cognitive.state_engine import apply_decision
+from backend.app.cognitive.state_engine import apply_decision, record_reply
 from backend.app.perception.answer_quality import extract_answer_quality
 from backend.app.perception.text_signals import extract_explicit_signals
 from backend.app.reasoning.dialogue_policy import decide
@@ -36,6 +36,7 @@ class InterviewService:
                 candidate_input=candidate_input,
                 local_reply=local_reply,
                 emotional_state=state.emotional_state,
+                recent_replies=state.recent_replies,
             )
             if self._reply_generator is not None
             else ReplyGenerationResult(
@@ -43,11 +44,12 @@ class InterviewService:
                 source=ReplySource.LOCAL,
             )
         )
+        final_state = record_reply(updated_state, generated_reply.reply)
         return TurnResult(
             signals=signals,
             content_evidence=content_evidence,
             decision=decision,
-            updated_state=updated_state,
+            updated_state=final_state,
             reply=generated_reply.reply,
             reply_source=generated_reply.source,
             fallback_reason=generated_reply.fallback_reason,

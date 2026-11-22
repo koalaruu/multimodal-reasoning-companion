@@ -56,6 +56,16 @@ def decide(
             reason=DecisionReason.INPUT_MISSING,
         )
     decision = _content_decision(state, evidence)
+    if evidence.minimal_answer:
+        if state.hints_offered >= _MAX_HINTS:
+            return ActionDecision(
+                action=DialogueAction.CONTINUE_INTERVIEW,
+                reason=DecisionReason.TOPIC_ADVANCED_WITHOUT_DETAIL,
+            )
+        return ActionDecision(
+            action=DialogueAction.OFFER_HINT,
+            reason=DecisionReason.MINIMAL_ANSWER_NEEDS_CHOICE,
+        )
     if decision.action == DialogueAction.REQUEST_CLARIFICATION:
         repeats = (
             state.clarifications_asked >= _MAX_CLARIFICATIONS
