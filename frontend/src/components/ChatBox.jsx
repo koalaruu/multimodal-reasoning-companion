@@ -7,6 +7,7 @@ export default function ChatBox({
   onDraftChange,
   onSubmit,
   sending,
+  openingBusy = false,
   ended,
 }) {
   const messageListRef = useRef(null);
@@ -22,7 +23,7 @@ export default function ChatBox({
   function handleSubmit(event) {
     event.preventDefault();
     const answer = draft.trim();
-    if (answer && !sending && !ended) {
+    if (answer && !sending && !openingBusy && !ended) {
       onSubmit(answer);
     }
   }
@@ -78,16 +79,16 @@ export default function ChatBox({
               : "Share your answer, using relevant experience where appropriate..."
           }
           rows="4"
-          disabled={sending || ended}
+          disabled={sending || openingBusy || ended}
         />
         <div className="form-footer">
           <span>{draft.length} characters</span>
           <button
             className="primary-button"
             type="submit"
-            disabled={!draft.trim() || sending || ended}
+            disabled={!draft.trim() || sending || openingBusy || ended}
           >
-            {sending ? "Sending..." : "Send answer"}
+            {openingBusy ? "Generating opening..." : sending ? "Sending..." : "Send answer"}
           </button>
         </div>
       </form>

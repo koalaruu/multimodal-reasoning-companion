@@ -83,6 +83,7 @@ h1 { margin-bottom: 7px; color: #202c43; font-size: clamp(1.5rem, 2.5vw, 2rem); 
 .secondary-button, .secondary { color: #5c6681; border-color: #e0e4ed; background: #fff; }
 .secondary-button:hover:not(:disabled), .secondary:hover:not(:disabled) { background: #f1f2fa; border-color: #cacde5; }
 .session-brief { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; padding: 17px 20px; border: 1px solid var(--border); border-radius: 13px; background: var(--surface); }
+.opening-lock-note.observation-note { margin: -10px 0 18px; }
 .brief-icon { display: grid; place-items: center; width: 43px; height: 43px; flex-shrink: 0; border: 1px solid #e8e7fb; border-radius: 11px; color: var(--accent); background: #f4f3ff; }
 .brief-context { min-width: 0; }
 .brief-context strong { display: block; color: #34415b; font-size: 0.84rem; overflow-wrap: anywhere; }

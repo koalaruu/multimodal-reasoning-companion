@@ -213,6 +213,23 @@ remains visible in the header; use the practice controls to stop sensors, or
 **New session** to stop them and clear context, chat, and the previous review.
 Chat auto-scroll is contained inside the conversation, not the whole page.
 
+**Opening lifecycle:** generate or regenerate the opening only before submitting
+the first answer. Both opening buttons lock as soon as an answer is submitted,
+including while it is pending or if sending fails, so visible history is never
+given a different opening underneath it. Use **New session** to unlock them.
+Typing a draft alone does not lock opening generation. If generating an opening
+fails before any answer, it can be retried without losing the draft.
+
+While opening generation is pending, sending/recording a new answer and both
+reset controls are disabled. The opening endpoint itself remains a stateless
+question generator; the dashboard owns this session-lifecycle safeguard.
+
+Run `npm --prefix frontend run test:opening` for the isolated Chrome regression
+(also run in CI). It starts its own Vite server and browser, controls API
+responses without calling FastAPI/Groq, and exercises pending/failure, pre-answer
+regeneration, active-session locks, and explicit reset. Install Chrome or set
+`CHROME_PATH` / `PUPPETEER_EXECUTABLE_PATH`, as with the vision benchmark runner.
+
 Available controls include:
 
 - a text interview flow across multiple turns;

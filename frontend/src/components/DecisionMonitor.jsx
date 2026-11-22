@@ -15,6 +15,7 @@ export default function DecisionMonitor({
   result,
   session,
   onReset,
+  resetDisabled = false,
   audioObservation,
   audioReadiness,
   visualObservation,
@@ -30,7 +31,7 @@ export default function DecisionMonitor({
           <p className="eyebrow">System transparency</p>
           <h2 id="monitor-heading">Decision monitor</h2>
         </div>
-        <button className="secondary-button" type="button" onClick={onReset}>
+        <button className="secondary-button" type="button" onClick={onReset} disabled={resetDisabled}>
           Reset session
         </button>
       </div>

@@ -70,6 +70,10 @@ export default function App() {
   const vision = useVisualPerception();
 
   const ended = session.status === "ended";
+  const practiceStarted =
+    (session.turn_index ?? 0) > 0 ||
+    messages.some((message) => message.role === "candidate");
+  const canGenerateOpening = !practiceStarted && !openingBusy && !sending && !ended;
   // Inputs own the active context, even if an in-flight turn returns an older snapshot.
   const sessionWithContext = {
     ...session,
@@ -86,6 +90,7 @@ export default function App() {
   }
 
   async function handleSubmit(answer) {
+    if (openingBusy || sending || ended) return;
     voice.cancel();
     const userMessage = {
       id: crypto.randomUUID(),
@@ -136,6 +141,7 @@ export default function App() {
   }
 
   async function handleGenerateOpening() {
+    if (!canGenerateOpening) return;
     setOpeningBusy(true);
     setError("");
     try {
@@ -145,23 +151,18 @@ export default function App() {
         jobDescription: jobDescription.trim(),
         interviewMode,
       });
-      setMessages((current) => {
-        const rest = current.slice(1);
-        return [
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            text: result.reply,
-            source: result.reply_source,
-          },
-          ...rest,
-        ];
-      });
+      setMessages([
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          text: result.reply,
+          source: result.reply_source,
+        },
+      ]);
       setSession((current) => ({
         ...current,
         conversation: [
           { role: "interviewer", content: result.reply },
-          ...(current.conversation ?? []).slice(1),
         ],
       }));
       navigateTo("practice");
@@ -173,6 +174,7 @@ export default function App() {
   }
 
   function handleReset() {
+    if (openingBusy || sending) return;
     voice.cancel();
     setSession(createSession());
     setMessages(initialMessages());
@@ -278,11 +280,16 @@ export default function App() {
             </div>
             <div className="brief-actions">
               <button type="button" className="secondary-button" onClick={() => navigateTo("context")}>Edit context</button>
-              <button type="button" className="primary-button" onClick={handleGenerateOpening} disabled={openingBusy || sending || ended}>
+              <button type="button" className="primary-button" onClick={handleGenerateOpening} disabled={!canGenerateOpening} aria-describedby={practiceStarted ? "practice-opening-note" : undefined}>
                 {openingBusy ? "Generating…" : "Generate opening"} <span aria-hidden="true">↗</span>
               </button>
             </div>
           </div>
+          {practiceStarted && (
+            <p className="opening-lock-note observation-note" id="practice-opening-note" role="status">
+              Opening locked after your first answer. Use New session to generate a new opening.
+            </p>
+          )}
 
           <div className="practice-grid">
             <ChatBox
@@ -291,6 +298,7 @@ export default function App() {
               draft={draft}
               onDraftChange={setDraft}
               onSubmit={handleSubmit}
+              openingBusy={openingBusy}
               sending={sending}
               ended={ended}
             />
@@ -310,7 +318,7 @@ export default function App() {
                 onDisable={handleDisableMicrophone}
                 onStartRecording={voice.startRecording}
                 onStopAndTranscribe={voice.stopAndTranscribe}
-                voiceDisabled={sending || ended}
+                voiceDisabled={sending || openingBusy || ended}
                 voiceError={voice.error}
                 voiceResult={voice.result}
                 voiceStatus={voice.status}
@@ -339,9 +347,14 @@ export default function App() {
                 <li><strong>Add the posting &amp; CV</strong><p>Give the interviewer real requirements and projects to discuss.</p></li>
                 <li><strong>Start the conversation</strong><p>Generate an opening based on your context, then answer in your own words.</p></li>
               </ol>
-              <button type="button" className="primary-button" onClick={handleGenerateOpening} disabled={openingBusy || sending || ended}>
+              <button type="button" className="primary-button" onClick={handleGenerateOpening} disabled={!canGenerateOpening} aria-describedby={practiceStarted ? "context-opening-note" : undefined}>
                 {openingBusy ? "Generating…" : "Generate opening & practice"} <span aria-hidden="true">→</span>
               </button>
+              {practiceStarted && (
+                <p className="observation-note" id="context-opening-note" role="status">
+                  Opening locked after your first answer. Use New session to generate a new opening.
+                </p>
+              )}
               <p className="observation-note">Your details are sent to Groq with the interview. Nothing is saved to a server-side profile.</p>
             </aside>
           </div>
@@ -357,6 +370,7 @@ export default function App() {
             result={latestResult}
             session={session}
             onReset={handleReset}
+            resetDisabled={sending || openingBusy}
             audioObservation={audio.observation}
             audioReadiness={audio.readiness}
             visualObservation={vision.observation}
