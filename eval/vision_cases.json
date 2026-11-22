@@ -1,0 +1,137 @@
+{
+  "schema_version": "vision-eval-v1",
+  "sources": [
+    {
+      "id": "mediapipe_testdata",
+      "repository": "google-ai-edge/mediapipe",
+      "commit": "9ce52340ad12b1be04bff9e6ae5d323c9855f80c",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/google-ai-edge/mediapipe/blob/9ce52340ad12b1be04bff9e6ae5d323c9855f80c/LICENSE",
+      "note": "The pinned BUILD file lists the public test assets. Exact hashes below prevent silent upstream drift from the unversioned asset bucket."
+    },
+    {
+      "id": "wikimedia_grace_hopper",
+      "source_page": "https://commons.wikimedia.org/wiki/File:Grace_Hopper.jpg",
+      "license": "Public domain (work of the United States Navy)",
+      "license_url": "https://commons.wikimedia.org/wiki/File:Grace_Hopper.jpg#Licensing"
+    }
+  ],
+  "runtime": {
+    "package": "@mediapipe/tasks-vision",
+    "version": "1.2.3",
+    "model_url": "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+    "running_mode": "IMAGE",
+    "max_faces": 2,
+    "warmup_repetitions": 1,
+    "measured_repetitions": 5,
+    "canvas_cell_size": 512
+  },
+  "acceptance": {
+    "min_held_out_runtime_success_rate": 1.0,
+    "min_held_out_face_count_accuracy": 1.0,
+    "max_held_out_no_face_false_positive_rate": 0.0,
+    "min_held_out_face_detection_rate": 1.0,
+    "min_held_out_stability_rate": 1.0,
+    "max_held_out_p95_inference_ms": 200.0
+  },
+  "assets": [
+    {
+      "id": "portrait_obama",
+      "source_id": "mediapipe_testdata",
+      "filename": "portrait.jpg",
+      "url": "https://storage.googleapis.com/mediapipe-assets/portrait.jpg",
+      "sha256": "a6f11efaa834706db23f275b6115058fa87fc7f14362681e6abe14e82749de3e",
+      "size_bytes": 176561,
+      "media_type": "image/jpeg"
+    },
+    {
+      "id": "cat",
+      "source_id": "mediapipe_testdata",
+      "filename": "cat.jpg",
+      "url": "https://storage.googleapis.com/mediapipe-assets/cat.jpg",
+      "sha256": "2533197401eebe9410ea4d063f86c43fbd2666f3e8165a38aca155c0d09c21be",
+      "size_bytes": 32362,
+      "media_type": "image/jpeg"
+    },
+    {
+      "id": "burger",
+      "source_id": "mediapipe_testdata",
+      "filename": "burger.jpg",
+      "url": "https://storage.googleapis.com/mediapipe-assets/burger.jpg",
+      "sha256": "97c15bbbf3cf3615063b1031c85d669de55839f59262bbe145d15ca75b36ecbf",
+      "size_bytes": 30300,
+      "media_type": "image/jpeg"
+    },
+    {
+      "id": "mozart_portrait",
+      "source_id": "mediapipe_testdata",
+      "filename": "mozart_square.jpg",
+      "url": "https://storage.googleapis.com/mediapipe-assets/mozart_square.jpg",
+      "sha256": "4feb4dadc5d6f853ade57b8c9d4c9a1f5ececd6469616c8e505f9a14823392b6",
+      "size_bytes": 247322,
+      "media_type": "image/jpeg"
+    },
+    {
+      "id": "grace_hopper",
+      "source_id": "wikimedia_grace_hopper",
+      "filename": "grace_hopper.jpg",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/5/55/Grace_Hopper.jpg",
+      "sha256": "e1f57e98cf38076c0f9a058d74ffddf90f20453e436033784606b63c8ed2e49a",
+      "size_bytes": 73746,
+      "media_type": "image/jpeg"
+    }
+  ],
+  "cases": [
+    {
+      "id": "calibration_obama_portrait",
+      "split": "calibration",
+      "identity_ids": ["barack_obama"],
+      "layout": "single",
+      "inputs": [{"asset_id": "portrait_obama"}],
+      "expected_face_count": 1
+    },
+    {
+      "id": "calibration_cat_no_face",
+      "split": "calibration",
+      "identity_ids": [],
+      "layout": "single",
+      "inputs": [{"asset_id": "cat"}],
+      "expected_face_count": 0
+    },
+    {
+      "id": "held_out_grace_hopper",
+      "split": "held_out",
+      "identity_ids": ["grace_hopper"],
+      "layout": "single",
+      "inputs": [{"asset_id": "grace_hopper"}],
+      "expected_face_count": 1
+    },
+    {
+      "id": "held_out_mozart_painting",
+      "split": "held_out",
+      "identity_ids": ["mozart_painting"],
+      "layout": "single",
+      "inputs": [{"asset_id": "mozart_portrait"}],
+      "expected_face_count": 1
+    },
+    {
+      "id": "held_out_burger_no_face",
+      "split": "held_out",
+      "identity_ids": [],
+      "layout": "single",
+      "inputs": [{"asset_id": "burger"}],
+      "expected_face_count": 0
+    },
+    {
+      "id": "held_out_two_distinct_faces",
+      "split": "held_out",
+      "identity_ids": ["grace_hopper", "mozart_painting"],
+      "layout": "horizontal",
+      "inputs": [
+        {"asset_id": "grace_hopper"},
+        {"asset_id": "mozart_portrait"}
+      ],
+      "expected_face_count": 2
+    }
+  ]
+}
