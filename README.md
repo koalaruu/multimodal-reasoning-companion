@@ -143,7 +143,7 @@ $env:GROQ_STT_TIMEOUT_SECONDS = "30"
 
 `whisper-large-v3-turbo` is faster and cheaper ($0.04/hour) but has a higher documented WER (12%). `whisper-large-v3` is more accurate (WER 10.3%) but slower ($0.111/hour). Both support multilingual transcription.
 
-Groq free tier accepts files up to 25 MiB and bills a minimum of 10 seconds per request. Audio is uploaded to `api.groq.com`; transcript and language metadata are returned. The project reads process environment variables and does not silently load `.env`.
+Groq free tier accepts files up to 25 MiB and bills a minimum of 10 seconds per request. Audio is uploaded to `api.groq.com`; transcript and language metadata are returned. `create_app()` loads a repo-root `.env` file at startup through `backend/app/env_loader.py`; variables already set in the process environment take precedence.
 
 Local Faster-Whisper downloads model weights from Hugging Face on first use and loads them lazily. Later requests use the local cache. Model weights may persist in the Hugging Face cache; candidate audio does not.
 
@@ -151,7 +151,7 @@ Local Faster-Whisper downloads model weights from Hugging Face on first use and 
 
 ### Optional Groq replies
 
-The project uses the official `groq` Python SDK and defaults to the production `openai/gpt-oss-20b` model for low-latency wording with strict JSON Schema output. `openai/gpt-oss-120b` is the supported higher-capacity alternative. Copy `.env.example` as a reference, then set variables in the process environment; the project does not silently load `.env` files.
+The project uses the official `groq` Python SDK and defaults to the production `openai/gpt-oss-20b` model for low-latency wording with strict JSON Schema output. `openai/gpt-oss-120b` is the supported higher-capacity alternative. Copy `.env.example` to `.env` and fill in `GROQ_API_KEY`; the backend loads it at startup with no third-party dependency. Exported shell variables override the file.
 
 ```powershell
 $env:GROQ_API_KEY = "your-new-key"
