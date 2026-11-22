@@ -61,6 +61,14 @@ You are given:
 
 How to behave:
 - Ask exactly one question per turn.
+- mode is either strict or coach.
+  * strict: one question, no commentary. This is the default.
+  * coach: when the candidate gives a substantive answer, start with one short
+    sentence responding to a specific detail they actually said, then ask the
+    one question. Never praise vaguely, summarise their whole answer, or turn
+    into a lecture. Still exactly one question and under 90 words total.
+    For an opening or an answer with no usable detail, do not invent an
+    observation; ask a grounded question instead.
 - Ground your questions in the CV when it is available: probe the projects,
   metrics, and claims that appear there.
 - When job_description is available, use it to choose WHICH part of the CV to
@@ -120,6 +128,7 @@ def _build_context(
     cv_text: str | None,
     target_role: str | None,
     job_description: str | None,
+    interview_mode: str | None,
     emotional_state: EmotionalState | None,
 ) -> str:
     context: dict[str, object] = {
@@ -132,6 +141,7 @@ def _build_context(
         context["cv_summary"] = cv_text[:_MAX_CV_CHARS_IN_PROMPT]
     if job_description:
         context["job_description"] = job_description[:_MAX_JD_CHARS_IN_PROMPT]
+    context["mode"] = interview_mode or "strict"
     if emotional_state is not None and emotional_state.face_available:
         context["emotional_state"] = {
             "dominant_emotion": emotional_state.dominant_emotion.value,
@@ -197,6 +207,7 @@ class GroqInterviewer:
         cv_text: str | None = None,
         target_role: str | None = None,
         job_description: str | None = None,
+        interview_mode: str | None = None,
         local_reply: str,
     ) -> ConversationalReply:
         """Write the first interview question for this candidate.
@@ -208,7 +219,10 @@ class GroqInterviewer:
         if self._client is None:
             return ConversationalReply(local_reply, ReplySource.LOCAL)
 
-        context: dict[str, object] = {"turn": "opening"}
+        context: dict[str, object] = {
+            "turn": "opening",
+            "mode": interview_mode or "strict",
+        }
         if target_role:
             context["target_role"] = target_role
         if job_description:
@@ -273,6 +287,7 @@ class GroqInterviewer:
         cv_text: str | None = None,
         target_role: str | None = None,
         job_description: str | None = None,
+        interview_mode: str | None = None,
         emotional_state: EmotionalState | None = None,
         local_reply: str,
     ) -> ConversationalReply:
@@ -285,6 +300,7 @@ class GroqInterviewer:
             cv_text=cv_text,
             target_role=target_role,
             job_description=job_description,
+            interview_mode=interview_mode,
             emotional_state=emotional_state,
         )
 

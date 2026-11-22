@@ -179,6 +179,8 @@ def process_interview_turn(
         updates["target_role"] = request_body.target_role
     if request_body.job_description:
         updates["job_description"] = request_body.job_description
+    if request_body.interview_mode is not None:
+        updates["interview_mode"] = request_body.interview_mode
     if updates:
         state = state.model_copy(update=updates)
 
@@ -205,6 +207,7 @@ def interview_opening(
         cv_text=request_body.cv_text,
         target_role=request_body.target_role,
         job_description=request_body.job_description,
+        interview_mode=request_body.interview_mode,
     )
     return InterviewOpeningResponse(reply=reply, reply_source=source)
 

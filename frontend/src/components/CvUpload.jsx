@@ -5,6 +5,8 @@ export default function CvUpload({
   cv,
   targetRole,
   jobDescription,
+  interviewMode,
+  onInterviewModeChange,
   onCvLoaded,
   onTargetRoleChange,
   onJobDescriptionChange,
@@ -71,6 +73,39 @@ export default function CvUpload({
           to pick which CV projects to probe.
         </small>
       </label>
+
+      <fieldset className="mode-select">
+        <legend>Interviewer style</legend>
+        <label>
+          <input
+            type="radio"
+            name="interview-mode"
+            value="strict"
+            checked={interviewMode === "strict"}
+            onChange={() => onInterviewModeChange("strict")}
+          />
+          <span>
+            <strong>Strict</strong> — one question, no commentary
+          </span>
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="interview-mode"
+            value="coach"
+            checked={interviewMode === "coach"}
+            onChange={() => onInterviewModeChange("coach")}
+          />
+          <span>
+            <strong>Coach</strong> — one short observation, then the question
+          </span>
+        </label>
+      </fieldset>
+      <p className="cv-status">
+        Applies to the next generated opening or reply; switching styles keeps
+        the conversation. Local control replies are unchanged.
+      </p>
+
 
       <div className="cv-actions">
         <input

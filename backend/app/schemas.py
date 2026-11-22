@@ -90,6 +90,18 @@ class ReplyFallbackReason(str, Enum):
     OFF_TOPIC_REPLY = "off_topic_reply"
 
 
+class InterviewMode(str, Enum):
+    """How much the interviewer is allowed to say per turn.
+
+    STRICT is the default: one question, no commentary. COACH adds one short
+    observation before the question so the exchange reads more like a mentor,
+    while still asking exactly one thing.
+    """
+
+    STRICT = "strict"
+    COACH = "coach"
+
+
 class TurnReadiness(str, Enum):
     """Audio-derived turn state, mirroring the browser classifier."""
 
@@ -205,6 +217,7 @@ class SessionState(DomainModel):
     cv_filename: str | None = None
     target_role: str | None = None
     job_description: str | None = None
+    interview_mode: InterviewMode = InterviewMode.STRICT
     cumulative_evidence: ContentEvidence | None = None
     emotional_state: EmotionalState | None = None
 
