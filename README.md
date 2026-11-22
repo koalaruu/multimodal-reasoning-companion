@@ -297,7 +297,7 @@ The emotional state is attached to `SessionState`, read by the deterministic dia
 - it fires at most once per session (`give_space_offered`);
 - neutral, happy, low-confidence, and no-face readings never change the action.
 
-Everything else stays advisory to the LLM as an explicit non-measurement note. The LLM is instructed to adjust tone subtly if appropriate but never to state that the candidate is stressed, confused, or emotional. The dialogue policy remains deterministic; emotional state does not change the action selected.
+Everything else stays advisory to the LLM as an explicit non-measurement note. The LLM is instructed to adjust tone subtly if appropriate but never to state that the candidate is stressed, confused, or emotional. The dialogue policy remains deterministic: the facial signal can change one action (`give_space`) under the conditions above, and nothing else.
 
 ### Interview conversation and CV context
 
@@ -669,6 +669,22 @@ This is an integration benchmark, not evidence of demographic fairness, webcam r
 - Microphone denial or transcription failure leaves the complete text workflow available.
 - Missing audio is represented as `unavailable`, never as silence or a neutral psychological state.
 - Text heuristics, audio energy, transcripts, and facial blendshapes do **not** measure stress, focus, mood, honesty, personality, competence, or hiring suitability.
-- Camera use is opt-in. Frames remain in browser memory, are never uploaded or persisted, and have no effect on dialogue policy; model acquisition still requires a network request to Google's versioned model asset.
+- Camera use is opt-in. Frames remain in browser memory, are never uploaded or persisted; only 52 blendshape coefficients reach the local API. Model acquisition still requires a network request to Google's versioned model asset.
+
+### Facial evidence freshness
+
+A face reading is evidence with a timestamp, not a permanent property of the session.
+
+| Situation | Behaviour |
+|---|---|
+| Camera running, reading < 4 s old | Sent with the turn; may produce `give_space` |
+| Camera running, reading older than 4 s | Treated as absent |
+| Camera stopped, denied, or failed | Cleared immediately; not sent |
+| Analysis response arrives after the camera stopped | Discarded, not applied |
+| Analysis request already in flight when stopped | Aborted |
+
+The client sends `emotional_state: null` explicitly when it has no current reading. The backend clears the stored value on explicit `null` and preserves it when the field is omitted, matching the context-field convention. This means a stopped camera cannot leave the policy acting on a face that is no longer observed.
+
+Clearing facial evidence does not rewrite earlier decisions: a `give_space` already chosen stays in that turn's record.
 
 Groq generates wording only. Local policy retains ownership of `action`, `reason`, `followup_topic`, and all state transitions; control actions remain local even when Groq is configured.

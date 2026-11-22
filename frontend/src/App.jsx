@@ -115,7 +115,7 @@ export default function App() {
       const result = await submitInterviewTurn({
         candidateInput: answer,
         state: sessionWithContext,
-        emotionalState: vision.emotionalState,
+        emotionalState: vision.currentEmotionalState(),
         turnReadiness: readiness.status,
         trailingSilenceMs: audio.observation?.trailing_silence_ms ?? null,
         interviewMode,

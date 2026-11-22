@@ -112,8 +112,13 @@ def record_reply(state: SessionState, reply: str) -> SessionState:
 
 def update_emotional_state(
     state: SessionState,
-    emotional_state: EmotionalState,
+    emotional_state: EmotionalState | None,
 ) -> SessionState:
-    """Attach or replace the emotional state on a session without mutating."""
+    """Attach, replace, or clear the emotional state without mutating.
+
+    Passing None clears it: the client omits facial evidence when the camera is
+    off, the reading is stale, or analysis failed, and a session must not keep
+    acting on a face that is no longer observed.
+    """
 
     return state.model_copy(update={"emotional_state": emotional_state})

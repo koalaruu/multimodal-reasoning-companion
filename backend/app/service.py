@@ -51,6 +51,11 @@ _DETERMINISTIC_ACTIONS = frozenset(
 
 _MAX_CONVERSATION_MESSAGES = 24
 
+# Distinguishes "caller said nothing about facial evidence" (preserve the
+# session value) from "caller sent null" (clear it because the camera is off,
+# the reading is stale, or analysis failed).
+_UNSET = object()
+
 
 class InterviewService:
     """Run one interview turn with Groq as the conversational driver."""
@@ -123,7 +128,7 @@ class InterviewService:
         self,
         state: SessionState,
         candidate_input: str,
-        emotional_state: EmotionalState | None = None,
+        emotional_state: EmotionalState | None | object = _UNSET,
         turn_readiness: str | None = None,
         trailing_silence_ms: int | None = None,
     ) -> TurnResult:
@@ -145,12 +150,13 @@ class InterviewService:
             state.cumulative_evidence, turn_evidence
         )
 
-        # The current observation must be on the state before the policy runs,
-        # otherwise the policy always sees the previous turn's face reading.
+        # The client owns sensor state. Explicit null means the camera is off, the
+        # reading is stale, or analysis failed, so the session must not keep acting
+        # on an older face. An omitted argument preserves the stored value.
         evaluated_state = (
-            update_emotional_state(state, emotional_state)
-            if emotional_state is not None
-            else state
+            state
+            if emotional_state is _UNSET
+            else update_emotional_state(state, emotional_state)
         )
         decision = decide(evaluated_state, signals, cumulative_evidence)
         updated_state = apply_decision(evaluated_state, decision)

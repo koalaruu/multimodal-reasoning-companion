@@ -1,5 +1,19 @@
 const MAX_VISIBLE_BLENDSHAPES = 5;
 
+// Facial evidence older than this is treated as absent, not as a resting face.
+export const VISION_MAX_AGE_MS = 4000;
+
+export function freshEmotionalState(
+  entry,
+  nowMs = Date.now(),
+  maxAgeMs = VISION_MAX_AGE_MS,
+) {
+  if (!entry?.value) return null;
+  if (!Number.isFinite(entry.atMs)) return null;
+  if (nowMs - entry.atMs > maxAgeMs) return null;
+  return entry.value;
+}
+
 export function unavailableVisualObservation(permission = "idle", error = null) {
   return {
     availability: "unavailable",

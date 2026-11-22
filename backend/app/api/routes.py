@@ -181,13 +181,22 @@ def process_interview_turn(
         updates["cv_filename"] = None
     if request_body.interview_mode is not None:
         updates["interview_mode"] = request_body.interview_mode
+
+    # Facial evidence follows the same convention as context: an omitted field
+    # preserves the session value, an explicit null clears it. The client sends
+    # null when the camera is off, the reading is stale, or analysis failed.
+    emotional_state = (
+        request_body.emotional_state
+        if "emotional_state" in request_body.model_fields_set
+        else state.emotional_state
+    )
     if updates:
         state = state.model_copy(update=updates)
 
     return service.process_turn(
         state=state,
         candidate_input=request_body.candidate_input,
-        emotional_state=request_body.emotional_state,
+        emotional_state=emotional_state,
         turn_readiness=request_body.turn_readiness,
         trailing_silence_ms=request_body.trailing_silence_ms,
     )
