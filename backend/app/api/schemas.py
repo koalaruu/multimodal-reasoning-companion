@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.schemas import DomainModel, EmotionalState, SessionState
 
@@ -27,8 +27,14 @@ class TranscriptionResponse(DomainModel):
     model: str = Field(min_length=1)
 
 
-class VisionAnalyzeRequest(DomainModel):
-    """Blendshape payload from the browser MediaPipe Face Landmarker."""
+class VisionAnalyzeRequest(BaseModel):
+    """Blendshape payload from the browser MediaPipe Face Landmarker.
+
+    Uses BaseModel (not DomainModel) to tolerate extra observation
+    fields the browser may include alongside the blendshape data.
+    """
+
+    model_config = ConfigDict(extra="ignore")
 
     face_available: bool
     face_count: int = Field(default=0, ge=0)

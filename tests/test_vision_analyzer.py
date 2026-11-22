@@ -124,7 +124,6 @@ class TestFACSMapping:
         assert state.dominant_emotion == EmotionLabel.FEARFUL
         assert state.emotion_scores["surprised"] == 0.0
 
-
 class TestMovingAverage:
     def test_window_trims_to_size(self) -> None:
         states = [
@@ -135,7 +134,6 @@ class TestMovingAverage:
                 face_available=True, dominant_emotion=EmotionLabel.NEUTRAL,
             ), window_size=5)
         assert len(states) == 5
-
     def test_average_only_valid_samples(self) -> None:
         history = [
             EmotionalState(
@@ -200,11 +198,18 @@ class TestVisionEndpoint:
         assert body["emotional_state"]["dominant_emotion"] == "neutral"
         assert body["emotional_state"]["face_available"] is False
 
-    def test_analyze_endpoint_rejects_extra_fields(self) -> None:
+    def test_analyze_endpoint_ignores_extra_fields(self) -> None:
         app = create_app()
         client = TestClient(app)
         resp = client.post(
             "/v1/vision/analyze",
-            json={"face_available": True, "face_count": 1, "bogus": 1},
+            json={
+                "face_available": True,
+                "face_count": 1,
+                "blendshapes": [],
+                "top_blendshapes": [{"name": "x", "score": 0.5}],
+                "availability": "available",
+            },
         )
-        assert resp.status_code == 422
+        assert resp.status_code == 200
+        assert resp.json()["emotional_state"]["face_available"] is True
