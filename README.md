@@ -275,11 +275,11 @@ Two things stay deterministic and outside the model:
 
 Provide context from the UI panel:
 
-- **Target role** — free text, e.g. `Machine Learning Engineer Intern`.
-- **Job description** — paste the posting (max 8,000 characters). The
-  interviewer uses it to choose *which* CV project to probe: it prefers
-  requirements the role names that the CV actually evidences, and never asks
-  about a requirement the CV shows no evidence for.
+- **Target role** — free text, e.g. `Flutter Developer` or `Sales Associate`.
+- **Job description** — paste the posting (max 8,000 characters). The active
+  role and posting define the interview, not the subject of a past CV project.
+  Questions probe relevant experience; requirements absent from the CV can be
+  explored as knowledge or hypothetical situations, never invented experience.
 - **CV** — upload `.pdf`, `.docx`, `.txt`, or `.md` (max 5 MiB). The backend extracts plain text and returns it to the browser; the
 browser stores it in the session and sends it with later turns. **No CV text is
 persisted on the server.** Scanned PDFs without a text layer are rejected with a
@@ -294,6 +294,11 @@ Requests already in progress retain the context they started with.
 For `/v1/interview/turn`, omitted context fields preserve their values in `state`.
 Explicit `null`, empty strings, or whitespace-only strings clear `cv_text`,
 `target_role`, or `job_description`; clearing `cv_text` also clears `cv_filename`.
+
+The initial question and offline replies are role-neutral. Without a role in the
+context fields or an explicit candidate statement, Groq asks which role to
+practice rather than assuming AI/ML. Strict/Coach and multimodal control rules
+are unchanged.
 
 **Interviewer style** (in the same panel):
 
@@ -318,12 +323,24 @@ text pipeline and says so in the transparency panel.
 `POST /v1/interview/review` summarizes a finished practice session. The output
 splits facts from advice on purpose:
 
-| Field | Source | Defensible? |
+| Field | Source | Interpretation |
 |---|---|---|
-| `covered` | accumulated evidence booleans | yes — each label traces to a turn |
-| `missing` | the same booleans, inverted | yes |
-| `suggestions` | Groq prose from those facts | no — advice, labelled as model output |
-| `questions_to_ask` | Groq prose from the job description and CV | no — same |
+| `covered` | accumulated lexical evidence booleans | general answer cues detected, not verified skills |
+| `missing` | the same booleans, inverted | not detected yet, not proof of missing experience |
+| `suggestions` | Groq prose grounded in role, JD, CV, and answers | role-specific advice, not a competence score |
+| `questions_to_ask` | Groq prose from the interview context | suggested questions, not factual findings |
+
+Coverage uses only three general cues: **a specific work example**, **how the
+work was checked**, and **a concrete outcome**. It never automatically demands
+macro-F1, class imbalance, or per-class results. Those remain observable ML
+detail flags, while technical advice uses the actual job and discussed task.
+
+The extractor recognizes finite English/Indonesian phrases, testing and customer
+feedback cues, percentages, score-context numbers, and timed improvements.
+Unusual wording, negation, and implicit/qualitative outcomes can be missed or
+misread. Bare version numbers, years, and identifiers are not outcome evidence.
+The existing 12-case ML-focused benchmark is a regression check, not evidence
+of general job-role coverage or real-world interview-assessment accuracy.
 
 Without a configured reviewer, `review_source=local`. If a Groq request fails,
 `review_source=local_fallback` includes `fallback_reason`. In both cases,
@@ -343,9 +360,9 @@ errors). Other warnings record the reason only. They never log exception message
 response bodies, CV text, prompts, chat text, or API keys. The existing review
 button allows a manual retry; no automatic retries or source relabelling are used.
 
-The UI shows a **Review this session** button once two turns have been
-answered. Covered items render in green, missing in amber, so the gap is
-visible without reading prose.
+The **Review this session** button is enabled after two turns. The UI labels
+the lists **Observed answer cues** and **Not detected yet**, separating these
+limited observations from Groq's role-specific advice.
 
 ### Multimodal A/B evaluation
 

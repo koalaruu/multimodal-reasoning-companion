@@ -110,7 +110,6 @@ def test_irrelevant_or_unclear_answers_request_clarification(
     assert result.content_evidence.relevance == relevance
     assert result.decision.action == DialogueAction.REQUEST_CLARIFICATION
     assert result.decision.reason == reason
-    assert "Please describe the AI project" in result.reply
 
 
 def test_repeated_unclear_answers_stop_repeating_clarification(
@@ -361,7 +360,6 @@ def test_evaluation_without_project_requests_project_example(
     assert result.content_evidence.project_described is False
     assert result.decision.action == DialogueAction.REQUEST_CLARIFICATION
     assert result.decision.reason == DecisionReason.PROJECT_EXAMPLE_NEEDED
-    assert "anchor them to one project" in result.reply
 
 
 def test_metric_without_project_requests_project_example(

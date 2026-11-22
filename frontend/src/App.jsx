@@ -16,7 +16,7 @@ import {
 } from "./services/interviewApi.js";
 
 const INTERVIEW_QUESTION =
-  "Tell me about an AI project you built. How did you evaluate it?";
+  "Which role would you like to practice interviewing for?";
 
 const DASHBOARD_VIEWS = [
   { id: "practice", label: "Practice room", icon: "M5 4h14v12H9l-4 4V4Z M9 8h6 M9 12h4" },

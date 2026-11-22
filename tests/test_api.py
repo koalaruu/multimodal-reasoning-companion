@@ -188,9 +188,6 @@ def test_groq_failure_returns_200_with_observable_fallback() -> None:
     assert body["decision"]["action"] == "offer_hint"
     assert body["reply_source"] == "local_fallback"
     assert body["fallback_reason"] == "sdk_error"
-    assert body["reply"] == (
-        "Start by naming the metric you used and why it matched the problem."
-    )
 
 
 def test_cors_allows_only_local_vite_origin(client: TestClient) -> None:

@@ -71,26 +71,31 @@ class TestCoverageIsDeterministic:
                 class_level_performance_mentioned=True,
             )
         )
-        assert len(covered) == 6
+        assert set(covered) == {
+            "a specific work example", "how the work was checked", "a concrete outcome",
+        }
         assert missing == []
 
     def test_empty_evidence_covers_nothing(self) -> None:
         covered, missing = compute_coverage(evidence())
         assert covered == []
-        assert len(missing) == 6
+        assert set(missing) == {
+            "a specific work example", "how the work was checked", "a concrete outcome",
+        }
 
     def test_no_evidence_is_all_missing(self) -> None:
         covered, missing = compute_coverage(None)
         assert covered == []
-        assert len(missing) == 6
+        assert set(missing) == {
+            "a specific work example", "how the work was checked", "a concrete outcome",
+        }
 
     def test_partial_evidence_splits_correctly(self) -> None:
         covered, missing = compute_coverage(
             evidence(project_described=True, evaluation_method_mentioned=True)
         )
-        assert "a specific project" in covered
-        assert "the evaluation method" in covered
-        assert "a concrete result or metric value" in missing
+        assert set(covered) == {"a specific work example", "how the work was checked"}
+        assert missing == ["a concrete outcome"]
 
 
 class TestGroqReviewer:
@@ -102,8 +107,8 @@ class TestGroqReviewer:
         client = FakeClient(response_with_content(payload))
         review = GroqReviewer(client=client).review(
             state=SessionState(session_id="r1", turn_index=4),
-            covered=["a specific project"],
-            missing=["the evaluation method"],
+            covered=["a specific work example"],
+            missing=["how the work was checked"],
         )
 
         assert review.review_source == ReplySource.GROQ
@@ -112,26 +117,25 @@ class TestGroqReviewer:
             "Name the threshold rule.",
         ]
         assert review.questions_to_ask == ["How is the team structured?"]
-        assert review.covered == ["a specific project"]
+        assert review.covered == ["a specific work example"]
         assert review.turns == 4
 
     def test_without_client_uses_local_advice(self) -> None:
         review = GroqReviewer().review(
             state=SessionState(session_id="r2", turn_index=2),
             covered=[],
-            missing=["the evaluation method"],
+            missing=["how the work was checked"],
         )
 
         assert review.review_source == ReplySource.LOCAL
         assert review.suggestions
-        assert "which metric you used" in review.suggestions[0]
 
     def test_timeout_falls_back_with_reason(self, caplog: pytest.LogCaptureFixture) -> None:
         client = FakeClient(error=TimeoutError("slow"))
         review = GroqReviewer(client=client).review(
             state=SessionState(session_id="r3"),
             covered=[],
-            missing=["a specific project"],
+            missing=["a specific work example"],
         )
 
         assert review.review_source == ReplySource.LOCAL_FALLBACK
@@ -218,7 +222,7 @@ class TestGroqReviewer:
         body = response.json()
         assert body["review_source"] == "local_fallback"
         assert body["fallback_reason"] == "sdk_error"
-        assert "a specific project" in body["missing"]
+        assert "a specific work example" in body["missing"]
         assert body["covered"] == []
         assert body["questions_to_ask"] == []
         assert "error_type=BadRequestError status=400" in caplog.text

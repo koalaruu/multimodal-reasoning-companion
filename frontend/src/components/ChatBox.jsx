@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 export default function ChatBox({
-  title = "AI project discussion",
+  title = "Interview practice",
   messages,
   draft,
   onDraftChange,
@@ -75,7 +75,7 @@ export default function ChatBox({
           placeholder={
             ended
               ? "Reset the session to continue practicing."
-              : "Describe your project, evaluation method, and results..."
+              : "Share your answer, using relevant experience where appropriate..."
           }
           rows="4"
           disabled={sending || ended}
