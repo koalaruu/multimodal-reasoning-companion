@@ -1,3 +1,13 @@
+const LANGUAGE_LABELS = {
+  en: "English",
+  id: "Bahasa Indonesia",
+};
+
+function formatDetectedLanguage(result) {
+  const label = LANGUAGE_LABELS[result.language] ?? result.language;
+  return `${label} (${Math.round(result.language_probability * 100)}%)`;
+}
+
 const VOICE_LABELS = {
   idle: "Voice answer ready",
   recording: "Recording voice answer",
@@ -35,9 +45,9 @@ export default function AudioControls({
           <p className="eyebrow">Optional local audio</p>
           <h2 id="audio-heading">Turn-taking and voice answer</h2>
           <p>
-            Voice activity stays in the browser. An explicit voice recording is
-            sent only to local FastAPI, transcribed in memory, and never submits
-            an answer automatically.
+            Voice activity stays in the browser. English or Indonesian voice
+            recordings are sent only to local FastAPI, transcribed in memory,
+            and never submit an answer automatically.
           </p>
         </div>
         <div className="audio-actions">
@@ -88,7 +98,8 @@ export default function AudioControls({
             <small>
               {formatDuration(voiceResult.audio_duration_ms)} audio in{" "}
               {formatDuration(voiceResult.processing_duration_ms)} using{" "}
-              {voiceResult.model}
+              {voiceResult.model}. Detected{" "}
+              {formatDetectedLanguage(voiceResult)}.
             </small>
           )}
         </div>

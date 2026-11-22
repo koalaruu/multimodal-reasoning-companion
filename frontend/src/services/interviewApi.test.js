@@ -15,12 +15,12 @@ test("transcription sends the audio blob without JSON conversion", async () => {
     request = { url, options };
     return new Response(
       JSON.stringify({
-        text: "I built a classifier.",
-        language: "en",
+        text: "Saya membangun model klasifikasi.",
+        language: "id",
         language_probability: 0.98,
         audio_duration_ms: 1200,
         processing_duration_ms: 300,
-        model: "base.en",
+        model: "base",
       }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
@@ -32,7 +32,8 @@ test("transcription sends the audio blob without JSON conversion", async () => {
   assert.equal(request.options.method, "POST");
   assert.equal(request.options.headers["Content-Type"], "audio/webm;codecs=opus");
   assert.strictEqual(request.options.body, audio);
-  assert.equal(result.text, "I built a classifier.");
+  assert.equal(result.text, "Saya membangun model klasifikasi.");
+  assert.equal(result.language, "id");
 });
 
 test("transcription exposes the safe API error message", async () => {

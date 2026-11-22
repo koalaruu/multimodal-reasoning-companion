@@ -21,14 +21,25 @@ from backend.app.service import InterviewService
 
 
 class FakeModel:
-    def __init__(self, segment_texts: list[str]) -> None:
+    def __init__(
+        self,
+        segment_texts: list[str],
+        *,
+        language: str = "en",
+        language_probability: float = 0.93,
+    ) -> None:
         self.segment_texts = segment_texts
+        self.language = language
+        self.language_probability = language_probability
         self.calls: list[tuple[object, dict]] = []
 
     def transcribe(self, samples: object, **kwargs: object):
         self.calls.append((samples, kwargs))
         segments = (SimpleNamespace(text=text) for text in self.segment_texts)
-        info = SimpleNamespace(language="en", language_probability=0.93)
+        info = SimpleNamespace(
+            language=self.language,
+            language_probability=self.language_probability,
+        )
         return segments, info
 
 
@@ -76,15 +87,47 @@ def test_faster_whisper_adapter_consumes_segments_and_reuses_model() -> None:
     assert first.processing_duration_ms >= 0
     assert second.text == first.text
     assert factory_calls == [
-        ("base.en", {"device": "cpu", "compute_type": "int8"})
+        ("base", {"device": "cpu", "compute_type": "int8"})
     ]
     assert len(model.calls) == 2
     assert model.calls[0][1] == {
-        "language": "en",
+        "language": None,
         "beam_size": 1,
         "vad_filter": True,
         "condition_on_previous_text": False,
     }
+
+
+def test_auto_detection_returns_indonesian_language_metadata() -> None:
+    model = FakeModel(
+        [" Saya membangun model klasifikasi. "],
+        language="id",
+        language_probability=0.91,
+    )
+    transcriber = FasterWhisperTranscriber(
+        model_factory=lambda *args, **kwargs: model,
+        audio_decoder=lambda audio, sampling_rate: range(sampling_rate),
+    )
+
+    result = transcriber.transcribe(BytesIO(b"indonesian"))
+
+    assert result.text == "Saya membangun model klasifikasi."
+    assert result.language == "id"
+    assert result.language_probability == 0.91
+    assert model.calls[0][1]["language"] is None
+
+
+@pytest.mark.parametrize("language", ["english", "fr"])
+def test_unsupported_language_configuration_is_rejected(language: str) -> None:
+    with pytest.raises(ValueError, match="auto, en, or id"):
+        FasterWhisperTranscriber(language=language)
+
+
+def test_english_only_model_requires_pinned_english() -> None:
+    with pytest.raises(ValueError, match="require language=en"):
+        FasterWhisperTranscriber(model_name="base.en")
+
+    FasterWhisperTranscriber(model_name="base.en", language="en")
 
 
 def test_duration_limit_is_checked_before_model_loading() -> None:
