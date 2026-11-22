@@ -58,6 +58,7 @@ export default function App() {
   const [interviewMode, setInterviewMode] = useState("strict");
   const [activeView, setActiveView] = useState("practice");
   const mainRef = useRef(null);
+  const turnInFlight = useRef(false);
   const audio = useAudioActivity();
   const voice = useVoiceTranscription({
     getStream: audio.getStream,
@@ -70,6 +71,9 @@ export default function App() {
   const vision = useVisualPerception();
 
   const ended = session.status === "ended";
+  const failedMessage = messages.find(
+    (message) => message.role === "candidate" && message.status === "failed",
+  );
   const practiceStarted =
     (session.turn_index ?? 0) > 0 ||
     messages.some((message) => message.role === "candidate");
@@ -90,14 +94,18 @@ export default function App() {
   }
 
   async function handleSubmit(answer) {
-    if (openingBusy || sending || ended) return;
+    if (openingBusy || sending || ended || turnInFlight.current) return;
     voice.cancel();
+    turnInFlight.current = true;
     const userMessage = {
-      id: crypto.randomUUID(),
+      id: failedMessage?.id ?? crypto.randomUUID(),
       role: "candidate",
       text: answer,
+      status: "sending",
     };
-    setMessages((current) => [...current, userMessage]);
+    setMessages((current) => failedMessage
+      ? current.map((message) => message.id === userMessage.id ? userMessage : message)
+      : [...current, userMessage]);
     setDraft("");
     setError("");
     setSending(true);
@@ -115,7 +123,9 @@ export default function App() {
       setSession(result.updated_state);
       setLatestResult(result);
       setMessages((current) => [
-        ...current,
+        ...current.map((message) => message.id === userMessage.id
+          ? { ...message, status: "sent" }
+          : message),
         {
           id: crypto.randomUUID(),
           role: "assistant",
@@ -124,6 +134,9 @@ export default function App() {
         },
       ]);
     } catch (requestError) {
+      setMessages((current) => current.map((message) => message.id === userMessage.id
+        ? { ...message, status: "failed" }
+        : message));
       setError(
         requestError instanceof TypeError
           ? "Cannot reach the interview API. Confirm that FastAPI is running on port 8000."
@@ -131,6 +144,7 @@ export default function App() {
       );
       setDraft(answer);
     } finally {
+      turnInFlight.current = false;
       setSending(false);
     }
   }
@@ -141,7 +155,7 @@ export default function App() {
   }
 
   async function handleGenerateOpening() {
-    if (!canGenerateOpening) return;
+    if (!canGenerateOpening || turnInFlight.current) return;
     setOpeningBusy(true);
     setError("");
     try {
@@ -174,7 +188,7 @@ export default function App() {
   }
 
   function handleReset() {
-    if (openingBusy || sending) return;
+    if (openingBusy || sending || turnInFlight.current) return;
     voice.cancel();
     setSession(createSession());
     setMessages(initialMessages());
@@ -301,6 +315,7 @@ export default function App() {
               openingBusy={openingBusy}
               sending={sending}
               ended={ended}
+              hasFailedAnswer={!!failedMessage}
             />
             <aside className="sensor-column" aria-label="Optional perception controls">
               <div className="column-label"><span>LIVE PERCEPTION</span><span>OPT-IN</span></div>

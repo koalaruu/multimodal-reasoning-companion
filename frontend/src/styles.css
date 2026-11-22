@@ -105,12 +105,17 @@ h1 { margin-bottom: 7px; color: #202c43; font-size: clamp(1.5rem, 2.5vw, 2rem); 
 .message.candidate { margin-left: auto; color: #fff; border-bottom-right-radius: 3px; background: #5653c8; }
 .message-role { display: block; margin-bottom: 7px; color: #8a93a9; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .message.candidate .message-role { color: #d9d8ff; }
+.message.candidate.sending { opacity: 0.7; }
+.message.candidate.failed { border: 1px solid #e4bdc5; color: #844653; background: #fff3f5; }
+.message.candidate.failed .message-role { color: #a35e6c; }
+.message-delivery { display: block; margin-top: 10px; font-size: 0.67rem; line-height: 1.6; font-weight: 600; }
 .message p { margin: 0; overflow-wrap: anywhere; line-height: 1.7; white-space: pre-wrap; }
 .reply-source { display: inline-block; margin-top: 10px; color: #8b93a8; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.55rem; text-transform: uppercase; }
 .reply-source.groq { color: #7d70c1; }
 .reply-source.local_fallback { color: #ab723f; }
 .answer-form { padding: 18px 22px; border-top: 1px solid var(--border); }
 .answer-form label { display: block; margin-bottom: 9px; color: #536079; font-size: 0.72rem; font-weight: 600; }
+.answer-form .retry-note { margin: 0 0 10px; color: #986373; font-size: 0.7rem; line-height: 1.6; }
 .answer-form textarea { display: block; width: 100%; min-height: 85px; max-height: 250px; padding: 12px 14px; resize: vertical; border: 1px solid #dde2ed; border-radius: 9px; color: #34415b; background: #fcfcff; font-size: 0.8rem; line-height: 1.6; }
 textarea::placeholder, input::placeholder { color: #929caf; opacity: 1; }
 .form-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 11px; }
