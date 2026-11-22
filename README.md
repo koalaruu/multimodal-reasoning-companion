@@ -381,6 +381,26 @@ The **Review this session** button is enabled after two turns. The UI labels
 the lists **Observed answer cues** and **Not detected yet**, separating these
 limited observations from Groq's role-specific advice.
 
+Each review is a snapshot of the completed turns and the role, job description,
+and CV used for that request. **Current review** means those inputs still match;
+it does not mean Groq succeeded (the source/fallback label is separate).
+New completed answers or changed application context mark the retained result
+**Outdated review** and change the action to **Update review**. Updates are
+manual, never an automatic paid/model request.
+
+A pending answer temporarily marks the previous review outdated and disables
+updates. If sending fails without changing completed state, the old review still
+matches those completed turns. Draft typing and Strict/Coach changes do not
+invalidate it. A late review response is labelled against its original snapshot,
+not the session state at arrival. Failed refreshes retain the prior result with
+its correct freshness label.
+
+**New session** removes the review and aborts its pending browser request.
+This client cancellation does not guarantee that an already-running backend or
+Groq call stops. `npm --prefix frontend run test:review` covers these races in an
+isolated Chrome/Vite regression with controlled API responses; CI runs it alongside
+`test:opening`. Both use the shared browser harness and require no API key.
+
 ### Multimodal A/B evaluation
 
 `python -m eval.run_multimodal_ab` runs ten fixed scenarios under three
