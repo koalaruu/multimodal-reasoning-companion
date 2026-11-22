@@ -1,15 +1,20 @@
-"""Run the public-fixture local STT benchmark."""
+"""Run a fixed-fixture STT benchmark against the selected app provider."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
 from pydantic import ValidationError
 
-from backend.app.perception.speech_to_text import FasterWhisperTranscriber
+from backend.app.env_loader import load_dotenv
+from backend.app.perception.speech_to_text import (
+    FasterWhisperTranscriber,
+    GroqWhisperTranscriber,
+)
 from eval.stt_evaluation import (
     DEFAULT_CACHE_DIR,
     DEFAULT_CASES_PATH,
@@ -57,6 +62,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE_DIR)
     parser.add_argument("--output", type=Path, default=DEFAULT_RESULTS_PATH)
     parser.add_argument("--validate-only", action="store_true")
+    parser.add_argument("--provider", choices=("local", "groq"), default="local")
+    parser.add_argument(
+        "--groq-model",
+        choices=("whisper-large-v3-turbo", "whisper-large-v3"),
+        default="whisper-large-v3-turbo",
+    )
     parser.add_argument(
         "--enforce-target",
         action="store_true",
@@ -77,15 +88,35 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
 
-    transcriber = FasterWhisperTranscriber(
-        model_name=dataset.model.name,
-        device=dataset.model.device,
-        compute_type=dataset.model.compute_type,
-        language=dataset.model.language,
-        max_audio_seconds=dataset.model.max_audio_seconds,
-    )
+    system = None
+    if args.provider == "groq":
+        if any(not asset.url.startswith("https://") for asset in dataset.assets):
+            print("STT evaluation error: Groq only accepts public HTTPS fixtures.", file=sys.stderr)
+            return 1
+        load_dotenv()
+        api_key = os.environ.get("GROQ_API_KEY", "").strip()
+        if not api_key:
+            print("STT evaluation error: Groq requires GROQ_API_KEY.", file=sys.stderr)
+            return 1
+        transcriber = GroqWhisperTranscriber(
+            api_key=api_key, model=args.groq_model, language=dataset.model.language,
+        )
+        system = {
+            "provider": "groq",
+            "name": args.groq_model,
+            "device": "cloud",
+            "language": dataset.model.language,
+        }
+    else:
+        transcriber = FasterWhisperTranscriber(
+            model_name=dataset.model.name,
+            device=dataset.model.device,
+            compute_type=dataset.model.compute_type,
+            language=dataset.model.language,
+            max_audio_seconds=dataset.model.max_audio_seconds,
+        )
     provider = PublicAudioCache(dataset, args.cache_dir)
-    report = evaluate_stt_dataset(dataset, transcriber, provider)
+    report = evaluate_stt_dataset(dataset, transcriber, provider, system_under_test=system)
     _write_report(report, args.output)
     _print_report(report)
     if args.enforce_target and not report["acceptance"]["passed"]:
