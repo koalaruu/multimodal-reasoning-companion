@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from backend.app.perception.speech_to_text import (
 )
 from eval.run_stt_cases import main
 from eval.stt_evaluation import (
+    PublicAudioCache,
     evaluate_stt_dataset,
     load_stt_dataset,
     normalize_transcript,
@@ -131,3 +133,48 @@ def test_speaker_leakage_across_splits_is_rejected(tmp_path: Path) -> None:
 def test_validate_only_does_not_download_models_or_audio(tmp_path: Path) -> None:
     assert main(["--validate-only", "--cache-dir", str(tmp_path)]) == 0
     assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("status", [200, 206])
+def test_archive_asset_only_accepts_the_declared_range(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, status: int,
+) -> None:
+    dataset = load_stt_dataset()
+    clip = b"exact utterance bytes"
+    start = 512
+    end = start + len(clip) - 1
+    asset = dataset.assets[0].model_copy(update={
+        "range_start": start,
+        "size_bytes": len(clip),
+        "sha256": sha256(clip).hexdigest(),
+    })
+    dataset = dataset.model_copy(update={"assets": [asset, *dataset.assets[1:]]})
+
+    def upstream(request, timeout):
+        assert request.get_header("Range") == f"bytes={start}-{end}"
+        response = BytesIO(clip)
+        response.status = status
+        response.headers = {"Content-Range": f"bytes {start}-{end}/4096"} if status == 206 else {}
+        return response
+
+    monkeypatch.setattr("eval.stt_evaluation.urlopen", upstream)
+    cache = PublicAudioCache(dataset, tmp_path)
+    if status == 206:
+        with cache.open_case(dataset.cases[0]) as audio:
+            assert audio.read() == clip
+    else:
+        with pytest.raises(ValueError, match="declared byte range"):
+            cache.open_case(dataset.cases[0])
+        assert not list(tmp_path.iterdir())
+
+
+def test_groq_benchmark_rejects_local_recordings(tmp_path: Path, capsys) -> None:
+    fixture = json.loads(Path("eval/stt_cases.json").read_text(encoding="utf-8"))
+    fixture["assets"][0]["url"] = (tmp_path / "private.flac").as_uri()
+    manifest = tmp_path / "personal.json"
+    manifest.write_text(json.dumps(fixture), encoding="utf-8")
+    output = tmp_path / "report.json"
+
+    assert main(["--cases", str(manifest), "--provider", "groq", "--output", str(output)]) == 1
+    assert "only accepts public HTTPS fixtures" in capsys.readouterr().err
+    assert not output.exists()

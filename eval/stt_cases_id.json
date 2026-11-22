@@ -1,0 +1,296 @@
+{
+  "schema_version": "stt-eval-v1",
+  "source": {
+    "repository": "Atika88/Indonesian-ASR-11-Class-Dataset",
+    "commit": "c65fe8bcff0547214c34cfbea248b4045a0d867c",
+    "note": "NSS-ID, Atika, Dwijayanti and Suprapto (2026), doi:10.57967/hf/10345, CC BY 4.0 (human recordings and transcripts). Unmodified WAV members from Declarative.tar and reference lines from Declarative.txt; recording IDs identify the exact speaker, take, and sentence. M5 is upstream validation; M4, M8, and M12 are upstream test. Four distinct sentences per speaker, no repeated prompt IDs across splits, fixed before inference."
+  },
+  "model": {
+    "name": "small",
+    "device": "cpu",
+    "compute_type": "int8",
+    "language": "id",
+    "max_audio_seconds": 60
+  },
+  "acceptance": {
+    "min_held_out_success_rate": 1,
+    "max_held_out_corpus_wer": 0.2,
+    "max_held_out_mean_rtf": 1
+  },
+  "assets": [
+    {
+      "id": "declarative_m5_take01_04",
+      "filename": "declarative_m5_take01_04.wav",
+      "url": "https://huggingface.co/datasets/Atika88/Indonesian-ASR-11-Class-Dataset/resolve/c65fe8bcff0547214c34cfbea248b4045a0d867c/data/audio_shards/by_category/Declarative.tar?download=true&stt_range=940000768",
+      "sha256": "d37ee6a0253da8663b8e169827918e206a2597fd8382d8561fcad416560d031e",
+      "size_bytes": 142660,
+      "media_type": "audio/wav",
+      "range_start": 940000768
+    },
+    {
+      "id": "declarative_m5_take01_05",
+      "filename": "declarative_m5_take01_05.wav",
+      "url": "https://huggingface.co/datasets/Atika88/Indonesian-ASR-11-Class-Dataset/resolve/c65fe8bcff0547214c34cfbea248b4045a0d867c/data/audio_shards/by_category/Declarative.tar?download=true&stt_range=940144128",
+      "sha256": "cbee9aa140805ddd51d8b12b5d2fb80baa35af667ca3445ad626db10e17888d2",
+      "size_bytes": 168420,
+      "media_type": "audio/wav",
+      "range_start": 940144128
+    },
+    {
+      "id": "declarative_m5_take01_07",
+      "filename": "declarative_m5_take01_07.wav",
+      "url": "https://huggingface.co/datasets/Atika88/Indonesian-ASR-11-Class-Dataset/resolve/c65fe8bcff0547214c34cfbea248b4045a0d867c/data/audio_shards/by_category/Declarative.tar?download=true&stt_range=940313088",
+      "sha256": "32d1d2df88901ef84188a7728657f8f5896c2742a211e91d68c5da2fb4293edd",
+      "size_bytes": 117540,
+      "media_type": "audio/wav",
+      "range_start": 940313088
+    },
+    {
+      "id": "declarative_m5_take01_08",
+      "filename": "declarative_m5_take01_08.wav",
+      "url": "https://huggingface.co/datasets/Atika88/Indonesian-ASR-11-Class-Dataset/resolve/c65fe8bcff0547214c34cfbea248b4045a0d867c/data/audio_shards/by_category/Declarative.tar?download=true&stt_range=940431360",
+      "sha256": "f69e9f3ef9a7a3e9dfd2c1f8ecdb71ea3b3898af43c847ad6519f124edaf3bb3",
+      "size_bytes": 118436,
+      "media_type": "audio/wav",
+      "range_start": 940431360
+    },
+    {
+      "id": "declarative_m4_take14_03",
+      "filename": "declarative_m4_take14_03.wav",
+      "url": "https://huggingface.co/datasets/Atika88/Indonesian-ASR-11-Class-Dataset/resolve/c65fe8bcff0547214c34cfbea248b4045a0d867c/data/audio_shards/by_category/Declarative.tar?download=true&stt_range=895057408",
+      "sha256": "c6aa9e93e81be758b9f50e434581a842499fe2ca0cf49a922c268ae2d425b7db",
+      "size_bytes": 108932,
+      "media_type": "audio/wav",
+      "range_start": 895057408
+    },
+    {
+      "id": "declarative_m4_take14_09",
+      "filename": "declarative_m4_take14_09.wav",
+      "url": "https://huggingface.co/datasets/Atika88/Indonesian-ASR-11-Class-Dataset/resolve/c65fe8bcff0547214c34cfbea248b4045a0d867c/data/audio_shards/by_category/Declarative.tar?download=true&stt_range=895626240",
+      "sha256": "998f456ac32b097299107f215529c4c01a3679e2ca2883df4bd1ae1d4fbc39ed",
+      "size_bytes": 103748,
+      "media_type": "audio/wav",
+      "range_start": 895626240
+    },
+    {
+      "id": "declarative_m4_take14_10",
+      "filename": "declarative_m4_take14_10.wav",
+      "url": "https://huggingface.co/datasets/Atika88/Indonesian-ASR-11-Class-Dataset/resolve/c65fe8bcff0547214c34cfbea248b4045a0d867c/data/audio_shards/by_category/Declarative.tar?download=true&stt_range=895730688",
+      "sha256": "ce892ef9f95e866c787dbb488e681e00e1f1e04c9e67191d7c3c83125d5d65b6",
+      "size_bytes": 109956,
+      "media_type": "audio/wav",
+      "range_start": 895730688
+    },
+    {
+      "id": "declarative_m4_take14_11",
+      "filename": "declarative_m4_take14_11.wav",
+      "url": "https://huggingface.co/datasets/Atika88/Indonesian-ASR-11-Class-Dataset/resolve/c65fe8bcff0547214c34cfbea248b4045a0d867c/data/audio_shards/by_category/Declarative.tar?download=true&stt_range=895841280",
+      "sha256": "23b545ba058a6b4c16c5a80141e7574ef158350c3135fbdc1360761124c86595",
+      "size_bytes": 96676,
+      "media_type": "audio/wav",
+      "range_start": 895841280
+    },
+    {
+      "id": "declarative_m8_take15_02",
+      "filename": "declarative_m8_take15_02.wav",
+      "url": "https://huggingface.co/datasets/Atika88/Indonesian-ASR-11-Class-Dataset/resolve/c65fe8bcff0547214c34cfbea248b4045a0d867c/data/audio_shards/by_category/Declarative.tar?download=true&stt_range=1140010496",
+      "sha256": "1fbd6e5f65ce1a32a53f73d9c5738ae6a6f5963ceb322fd8c16b34bb4ddab3b6",
+      "size_bytes": 132484,
+      "media_type": "audio/wav",
+      "range_start": 1140010496
+    },
+    {
+      "id": "declarative_m8_take15_12",
+      "filename": "declarative_m8_take15_12.wav",
+      "url": "https://huggingface.co/datasets/Atika88/Indonesian-ASR-11-Class-Dataset/resolve/c65fe8bcff0547214c34cfbea248b4045a0d867c/data/audio_shards/by_category/Declarative.tar?download=true&stt_range=1141042176",
+      "sha256": "6eee4306b1d5d6d77814dd493a4539235064e5ca35e9d40697d604e0ab3322b6",
+      "size_bytes": 134564,
+      "media_type": "audio/wav",
+      "range_start": 1141042176
+    },
+    {
+      "id": "declarative_m8_take15_13",
+      "filename": "declarative_m8_take15_13.wav",
+      "url": "https://huggingface.co/datasets/Atika88/Indonesian-ASR-11-Class-Dataset/resolve/c65fe8bcff0547214c34cfbea248b4045a0d867c/data/audio_shards/by_category/Declarative.tar?download=true&stt_range=1141177344",
+      "sha256": "a0f133f3dae7cc3644c83c58ddcec53bc1be2fca5b874014949bccee28a82ab0",
+      "size_bytes": 102852,
+      "media_type": "audio/wav",
+      "range_start": 1141177344
+    },
+    {
+      "id": "declarative_m8_take15_14",
+      "filename": "declarative_m8_take15_14.wav",
+      "url": "https://huggingface.co/datasets/Atika88/Indonesian-ASR-11-Class-Dataset/resolve/c65fe8bcff0547214c34cfbea248b4045a0d867c/data/audio_shards/by_category/Declarative.tar?download=true&stt_range=1141280768",
+      "sha256": "57fb5497d238c7a8bf7b401ad5c1d928ca804ef6feb3de0bdc97ed3adca2e2d5",
+      "size_bytes": 123908,
+      "media_type": "audio/wav",
+      "range_start": 1141280768
+    },
+    {
+      "id": "declarative_m12_take14_18",
+      "filename": "declarative_m12_take14_18.wav",
+      "url": "https://huggingface.co/datasets/Atika88/Indonesian-ASR-11-Class-Dataset/resolve/c65fe8bcff0547214c34cfbea248b4045a0d867c/data/audio_shards/by_category/Declarative.tar?download=true&stt_range=720071168",
+      "sha256": "93909edbed8947693e8d2bc635cd4543eac7579ae550dc70989c06e77d63ff70",
+      "size_bytes": 113636,
+      "media_type": "audio/wav",
+      "range_start": 720071168
+    },
+    {
+      "id": "declarative_m12_take14_19",
+      "filename": "declarative_m12_take14_19.wav",
+      "url": "https://huggingface.co/datasets/Atika88/Indonesian-ASR-11-Class-Dataset/resolve/c65fe8bcff0547214c34cfbea248b4045a0d867c/data/audio_shards/by_category/Declarative.tar?download=true&stt_range=720185344",
+      "sha256": "9b67e2401e8181ac3ae10fe4e44322d7547d4274cb4750f93bc63763e7f18850",
+      "size_bytes": 134660,
+      "media_type": "audio/wav",
+      "range_start": 720185344
+    },
+    {
+      "id": "declarative_m12_take14_20",
+      "filename": "declarative_m12_take14_20.wav",
+      "url": "https://huggingface.co/datasets/Atika88/Indonesian-ASR-11-Class-Dataset/resolve/c65fe8bcff0547214c34cfbea248b4045a0d867c/data/audio_shards/by_category/Declarative.tar?download=true&stt_range=720321024",
+      "sha256": "253c0155db8caca1074c683e49fae93bd33daf540b9b3f350170b184e817fd4c",
+      "size_bytes": 156708,
+      "media_type": "audio/wav",
+      "range_start": 720321024
+    },
+    {
+      "id": "declarative_m12_take15_01",
+      "filename": "declarative_m12_take15_01.wav",
+      "url": "https://huggingface.co/datasets/Atika88/Indonesian-ASR-11-Class-Dataset/resolve/c65fe8bcff0547214c34cfbea248b4045a0d867c/data/audio_shards/by_category/Declarative.tar?download=true&stt_range=720478720",
+      "sha256": "aa9bc765df153e8b92c6ac550008e746f42a197dfd8a32a8a4800be5fb4c79d4",
+      "size_bytes": 99492,
+      "media_type": "audio/wav",
+      "range_start": 720478720
+    }
+  ],
+  "cases": [
+    {
+      "id": "declarative_m5_take01_04",
+      "split": "calibration",
+      "speaker_id": "m5",
+      "asset_id": "declarative_m5_take01_04",
+      "channel": "mono",
+      "reference": "Lingkungan akademik yang positif sangat mendukung proses belajar"
+    },
+    {
+      "id": "declarative_m5_take01_05",
+      "split": "calibration",
+      "speaker_id": "m5",
+      "asset_id": "declarative_m5_take01_05",
+      "channel": "mono",
+      "reference": "Mahasiswa perlu mengatur waktu dengan baik antara kuliah dan kegiatan lainnya"
+    },
+    {
+      "id": "declarative_m5_take01_07",
+      "split": "calibration",
+      "speaker_id": "m5",
+      "asset_id": "declarative_m5_take01_07",
+      "channel": "mono",
+      "reference": "Semua makhluk hidup membutuhkan air untuk bertahan hidup"
+    },
+    {
+      "id": "declarative_m5_take01_08",
+      "split": "calibration",
+      "speaker_id": "m5",
+      "asset_id": "declarative_m5_take01_08",
+      "channel": "mono",
+      "reference": "Kita harus menjaga lingkungan untuk generasi mendatang"
+    },
+    {
+      "id": "declarative_m4_take14_03",
+      "split": "held_out",
+      "speaker_id": "m4",
+      "asset_id": "declarative_m4_take14_03",
+      "channel": "mono",
+      "reference": "Dosen pembimbing memberikan banyak masukan yang membangun."
+    },
+    {
+      "id": "declarative_m4_take14_09",
+      "split": "held_out",
+      "speaker_id": "m4",
+      "asset_id": "declarative_m4_take14_09",
+      "channel": "mono",
+      "reference": "Saya yakin usaha tidak akan mengkhianati hasil."
+    },
+    {
+      "id": "declarative_m4_take14_10",
+      "split": "held_out",
+      "speaker_id": "m4",
+      "asset_id": "declarative_m4_take14_10",
+      "channel": "mono",
+      "reference": "Saya percaya bahwa belajar adalah investasi jangka panjang"
+    },
+    {
+      "id": "declarative_m4_take14_11",
+      "split": "held_out",
+      "speaker_id": "m4",
+      "asset_id": "declarative_m4_take14_11",
+      "channel": "mono",
+      "reference": "Ujian akhir semester akan dilaksanakan minggu depan"
+    },
+    {
+      "id": "declarative_m8_take15_02",
+      "split": "held_out",
+      "speaker_id": "m8",
+      "asset_id": "declarative_m8_take15_02",
+      "channel": "mono",
+      "reference": "Kami sedang mengerjakan tugas kelompok untuk mata kuliah Sistem Kontrol."
+    },
+    {
+      "id": "declarative_m8_take15_12",
+      "split": "held_out",
+      "speaker_id": "m8",
+      "asset_id": "declarative_m8_take15_12",
+      "channel": "mono",
+      "reference": "Universitas Sriwijaya adalah salah satu perguruan tinggi ternama di Palembang."
+    },
+    {
+      "id": "declarative_m8_take15_13",
+      "split": "held_out",
+      "speaker_id": "m8",
+      "asset_id": "declarative_m8_take15_13",
+      "channel": "mono",
+      "reference": "Kampus menyediakan fasilitas laboratorium yang lengkap."
+    },
+    {
+      "id": "declarative_m8_take15_14",
+      "split": "held_out",
+      "speaker_id": "m8",
+      "asset_id": "declarative_m8_take15_14",
+      "channel": "mono",
+      "reference": "Diskusi di kelas membuat saya lebih paham dengan topik yang dibahas."
+    },
+    {
+      "id": "declarative_m12_take14_18",
+      "split": "held_out",
+      "speaker_id": "m12",
+      "asset_id": "declarative_m12_take14_18",
+      "channel": "mono",
+      "reference": "Transportasi LRT sangat membantu mobilitas warga"
+    },
+    {
+      "id": "declarative_m12_take14_19",
+      "split": "held_out",
+      "speaker_id": "m12",
+      "asset_id": "declarative_m12_take14_19",
+      "channel": "mono",
+      "reference": "Saya ingin berkontribusi untuk kemajuan kota Palembang melalui pendidikan"
+    },
+    {
+      "id": "declarative_m12_take14_20",
+      "split": "held_out",
+      "speaker_id": "m12",
+      "asset_id": "declarative_m12_take14_20",
+      "channel": "mono",
+      "reference": "Palembang pernah menjadi tuan rumah Asian Games 2018 bersama Jakarta"
+    },
+    {
+      "id": "declarative_m12_take15_01",
+      "split": "held_out",
+      "speaker_id": "m12",
+      "asset_id": "declarative_m12_take15_01",
+      "channel": "mono",
+      "reference": "Saya membutuhkan rekomendasi tempat wisata di kota Palembang"
+    }
+  ]
+}

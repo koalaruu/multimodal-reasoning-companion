@@ -1,4 +1,4 @@
-"""Reproducible local STT evaluation with speaker-disjoint held-out cases."""
+"""Reproducible STT evaluation with speaker-disjoint held-out cases."""
 
 from __future__ import annotations
 
@@ -63,6 +63,7 @@ class AudioAsset(_ContractModel):
     sha256: str = Field(pattern=_SHA256_PATTERN)
     size_bytes: int = Field(gt=0)
     media_type: str = Field(pattern=r"^audio/[a-z0-9.+-]+$")
+    range_start: int | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def validate_location(self) -> Self:
@@ -70,6 +71,8 @@ class AudioAsset(_ContractModel):
             raise ValueError("asset filename must not contain a path")
         parsed = urlparse(self.url)
         if parsed.scheme == "file":
+            if self.range_start is not None:
+                raise ValueError("byte ranges require an HTTPS asset")
             # Locally recorded clips stay in the working tree and are never
             # redistributed; only the digest is committed.
             if not parsed.path:
@@ -196,9 +199,21 @@ class PublicAudioCache:
                 )
             return source_path
 
-        request = Request(asset.url, headers={"User-Agent": "stt-eval-v1"})
+        headers = {"User-Agent": "stt-eval-v1"}
+        expected_range = None
+        if asset.range_start is not None:
+            start = asset.range_start
+            end = start + asset.size_bytes - 1
+            headers["Range"] = f"bytes={start}-{end}"
+            expected_range = f"bytes {start}-{end}"
+        request = Request(asset.url, headers=headers)
         try:
             with urlopen(request, timeout=60) as source, part_path.open("wb") as target:
+                if expected_range is not None and (
+                    source.status != 206
+                    or source.headers.get("Content-Range", "").split("/", 1)[0] != expected_range
+                ):
+                    raise ValueError(f"{asset.id}: upstream did not return the declared byte range")
                 received = 0
                 while chunk := source.read(_DOWNLOAD_CHUNK_BYTES):
                     received += len(chunk)
@@ -250,6 +265,8 @@ def evaluate_stt_dataset(
     dataset: SttDataset,
     transcriber: AudioTranscriber,
     audio_provider: CaseAudioProvider,
+    *,
+    system_under_test: dict[str, str] | None = None,
 ) -> dict:
     outcomes = []
     for index, case in enumerate(dataset.cases):
@@ -328,7 +345,11 @@ def evaluate_stt_dataset(
     acceptance["passed"] = all(acceptance.values())
     return {
         "schema_version": "stt-report-v1",
-        "system_under_test": dataset.model.model_dump(mode="json"),
+        "system_under_test": (
+            system_under_test
+            if system_under_test is not None
+            else dataset.model.model_dump(mode="json")
+        ),
         "runtime": {
             "python": platform.python_version(),
             "system": platform.system(),

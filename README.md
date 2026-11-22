@@ -151,6 +151,9 @@ Local Faster-Whisper downloads model weights from Hugging Face on first use and 
 
 `WHISPER_LANGUAGE=auto` lets the multilingual model detect each clip. Set it to `en` or `id` to pin English or Indonesian when short or noisy recordings are misdetected. The pinned `base.en` evaluation below remains a historical English baseline and is not relabeled as evidence for `small`.
 
+For an Indonesian-only demo that allows cloud audio, the [Indonesian pilot](#indonesian-stt-pilot)
+favored Groq Turbo with `GROQ_STT_LANGUAGE=id` on the sampled clips.
+
 ### Optional Groq replies
 
 The project uses the official `groq` Python SDK and defaults to the production `openai/gpt-oss-20b` model for low-latency wording with strict JSON Schema output. `openai/gpt-oss-120b` is the supported higher-capacity alternative. Copy `.env.example` to `.env` and fill in `GROQ_API_KEY`; the backend loads it at startup with no third-party dependency. Exported shell variables override the file.
@@ -639,7 +642,60 @@ The target was fixed before the first held-out run: 100% held-out success, corpu
 
 Target status: **PASS**. The runner writes `eval/results/stt-latest.json` with hypotheses, per-case metrics, runtime metadata, and safe failure categories.
 
-Three clean English public fixtures are integration evidence only. They do not establish performance on interview answers, microphones, accents, background noise, Indonesian speech, automatic language detection, or unseen datasets. The benchmark intentionally keeps its pinned `base.en` English baseline separate from the bilingual production default. A larger consented, speaker-disjoint English/Indonesian corpus is required before publishing bilingual accuracy claims.
+Three clean English public fixtures are integration evidence only. The pinned
+`base.en` baseline does not establish performance on interview answers,
+Indonesian speech, or automatic language detection.
+
+### Indonesian STT pilot
+
+`eval/stt_cases_id.json` selects 16 original human recordings from the
+[NSS-ID corpus](https://doi.org/10.57967/hf/10345) by Atika, Dwijayanti, and
+Suprapto ([data paper](https://doi.org/10.1016/j.dib.2026.113261),
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)). Only declarative
+sentences are used. The fixed pilot has four calibration clips from upstream
+validation speaker M5 and twelve held-out clips from upstream test speakers
+M4, M8, and M12. Each selected sentence is distinct; the clips, speakers,
+references, and report-only targets were fixed before inference.
+
+The downloader retrieves only the pinned WAV byte ranges (1.96 MB of audio)
+from the upstream TAR and checks each size and SHA-256. Audio is not committed.
+Both providers get the same clips and explicit `id`, not automatic language
+detection. `--provider groq` requires `GROQ_API_KEY` and uploads the public
+audio to Groq; the default `local` provider does not upload audio. The Groq
+runner rejects manifests with local file assets.
+
+```powershell
+python -m eval.run_stt_cases --validate-only --cases eval/stt_cases_id.json
+python -m eval.run_stt_cases --cases eval/stt_cases_id.json --provider local --output eval/results/stt-id-small.json
+python -m eval.run_stt_cases --cases eval/stt_cases_id.json --provider groq --output eval/results/stt-id-groq.json
+```
+
+The local run requires `backend/requirements-stt.txt` and downloads the
+multilingual `small` model only if not cached. The Groq run needs only the
+base backend dependencies for this mono corpus. In Colab, load the key into
+the environment from Secrets (`os.environ["GROQ_API_KEY"] = userdata.get("GROQ_API_KEY")`,
+with `from google.colab import userdata` and `import os`), then run the same
+commands in shell cells.
+CI validates both manifests without downloading audio, loading a model, or
+calling Groq.
+
+**Observed held-out result:** 12 clips, 44.28 seconds, 99 reference words;
+one run per provider from the Windows 11 AMD64 workstation (Python 3.14,
+Faster-Whisper 1.2.1 / CTranslate2 4.9.0 with cached `small`,
+Groq SDK 1.7.0). Timings are post-recording processing: local decoding and
+inference versus a cloud request including network time.
+
+| Provider | Successful clips | Word edits | Corpus WER ↓ | Mean processing | Mean RTF ↓ |
+|---|---:|---:|---:|---:|---:|
+| Faster-Whisper `small`, CPU int8 | 12/12 | 18 | 18.18% | 4,310 ms | 1.2053 |
+| Groq `whisper-large-v3-turbo` | 12/12 | 8 | 8.08% | 566 ms | 0.1553 |
+
+Both met the 20% WER and 100% successful-transcription targets. Only Groq met
+the mean RTF target of 1.0. For this pilot, Groq is the better fit when audio
+may leave the device; local remains the privacy/offline option. These are
+prompted readings from three male held-out speakers, not spontaneous
+interviews. They do not measure background noise, accents as verified
+categories, code-switching, auto-detection, or latency on other networks.
 
 ### Local vision benchmark
 
