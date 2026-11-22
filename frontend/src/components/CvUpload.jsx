@@ -1,7 +1,14 @@
 import { useRef, useState } from "react";
 import { extractCv } from "../services/interviewApi.js";
 
-export default function CvUpload({ cv, targetRole, onCvLoaded, onTargetRoleChange }) {
+export default function CvUpload({
+  cv,
+  targetRole,
+  jobDescription,
+  onCvLoaded,
+  onTargetRoleChange,
+  onJobDescriptionChange,
+}) {
   const inputRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -48,6 +55,21 @@ export default function CvUpload({ cv, targetRole, onCvLoaded, onTargetRoleChang
           maxLength={200}
           onChange={(event) => onTargetRoleChange(event.target.value)}
         />
+      </label>
+
+      <label className="field">
+        <span>Job description (recommended)</span>
+        <textarea
+          rows={5}
+          value={jobDescription}
+          placeholder="Paste the posting: responsibilities, required skills, tools, and metrics the role cares about."
+          maxLength={8000}
+          onChange={(event) => onJobDescriptionChange(event.target.value)}
+        />
+        <small className="cv-status">
+          {jobDescription.length} / 8000 characters — the interviewer uses this
+          to pick which CV projects to probe.
+        </small>
       </label>
 
       <div className="cv-actions">

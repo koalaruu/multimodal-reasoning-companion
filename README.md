@@ -255,8 +255,14 @@ Two things stay deterministic and outside the model:
 - **Control intents.** Stop, wait, and meta questions are answered from fixed
   local text so a model cannot reinterpret them.
 
-Upload a CV or job summary from the UI (`.pdf`, `.docx`, `.txt`, `.md`, max
-5 MiB). The backend extracts plain text and returns it to the browser; the
+Provide context from the UI panel:
+
+- **Target role** — free text, e.g. `Machine Learning Engineer Intern`.
+- **Job description** — paste the posting (max 8,000 characters). The
+  interviewer uses it to choose *which* CV project to probe: it prefers
+  requirements the role names that the CV actually evidences, and never asks
+  about a requirement the CV shows no evidence for.
+- **CV** — upload `.pdf`, `.docx`, `.txt`, or `.md` (max 5 MiB). The backend extracts plain text and returns it to the browser; the
 browser stores it in the session and sends it with later turns. **No CV text is
 persisted on the server.** Scanned PDFs without a text layer are rejected with a
 clear error because they need OCR first.

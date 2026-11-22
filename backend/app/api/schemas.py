@@ -19,6 +19,7 @@ class InterviewTurnRequest(DomainModel):
     emotional_state: EmotionalState | None = None
     cv_text: str | None = None
     target_role: str | None = None
+    job_description: str | None = None
 
 
 class CvUploadResponse(DomainModel):

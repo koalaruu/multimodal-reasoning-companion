@@ -41,6 +41,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [cv, setCv] = useState(null);
   const [targetRole, setTargetRole] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
   const audio = useAudioActivity();
   const voice = useVoiceTranscription({
     getStream: audio.getStream,
@@ -73,6 +74,7 @@ export default function App() {
         emotionalState: vision.emotionalState,
         cvText: cv?.text,
         targetRole: targetRole.trim(),
+        jobDescription: jobDescription.trim(),
       });
       setSession(result.updated_state);
       setLatestResult(result);
@@ -112,6 +114,7 @@ export default function App() {
     setSending(false);
     setCv(null);
     setTargetRole("");
+    setJobDescription("");
     audio.disableMicrophone();
     vision.disableCamera();
   }
@@ -154,8 +157,10 @@ export default function App() {
       <CvUpload
         cv={cv}
         targetRole={targetRole}
+        jobDescription={jobDescription}
         onCvLoaded={setCv}
         onTargetRoleChange={setTargetRole}
+        onJobDescriptionChange={setJobDescription}
       />
       <VisualControls
         observation={vision.observation}

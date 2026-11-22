@@ -188,6 +188,7 @@ class SessionState(DomainModel):
     cv_text: str | None = None
     cv_filename: str | None = None
     target_role: str | None = None
+    job_description: str | None = None
     cumulative_evidence: ContentEvidence | None = None
     emotional_state: EmotionalState | None = None
 

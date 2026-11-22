@@ -138,6 +138,7 @@ class InterviewService:
             conversation=state.conversation,
             cv_text=state.cv_text,
             target_role=state.target_role,
+            job_description=state.job_description,
             emotional_state=state.emotional_state,
             local_reply=local_reply,
         )

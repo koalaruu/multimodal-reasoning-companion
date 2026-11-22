@@ -985,6 +985,17 @@ footer {
   background: #fff;
 }
 
+.cv-upload textarea {
+  padding: 9px 11px;
+  border: 1px solid #d8dfdb;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  background: #fff;
+  resize: vertical;
+}
+
 .cv-actions {
   display: flex;
   flex-wrap: wrap;

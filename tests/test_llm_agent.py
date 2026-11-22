@@ -156,6 +156,52 @@ class TestGroqInterviewer:
         assert "Macro-F1 0.81" in context["cv_summary"]
         assert context["conversation"][0]["content"] == "hi"
 
+    def test_job_description_reaches_the_prompt(self) -> None:
+        client = FakeClient(response_with_content(reply_json("Which metric?")))
+        GroqInterviewer(client=client).respond(
+            candidate_input="I built a model.",
+            conversation=[],
+            cv_text="Ticket classifier. Macro-F1 0.81.",
+            job_description="Must have experience with class imbalance handling.",
+            local_reply="fallback",
+        )
+
+        context = context_of(client)
+        assert "class imbalance" in context["job_description"]
+
+    def test_job_description_is_truncated(self) -> None:
+        client = FakeClient(response_with_content(reply_json("Go on.")))
+        GroqInterviewer(client=client).respond(
+            candidate_input="done",
+            conversation=[],
+            job_description="y" * 20_000,
+            local_reply="fallback",
+        )
+
+        assert len(context_of(client)["job_description"]) <= 4_000
+
+    def test_absent_job_description_is_omitted(self) -> None:
+        client = FakeClient(response_with_content(reply_json("Go on.")))
+        GroqInterviewer(client=client).respond(
+            candidate_input="done", conversation=[], local_reply="fallback"
+        )
+
+        assert "job_description" not in context_of(client)
+
+    def test_job_description_reaches_groq_through_session_state(self) -> None:
+        client = FakeClient(response_with_content(reply_json("Tell me more.")))
+        state = SessionState(
+            session_id="jd",
+            cv_text="Built a churn model. AUC 0.88.",
+            job_description="Requires production ML deployment experience.",
+        )
+
+        InterviewService(GroqInterviewer(client=client)).process_turn(
+            state, "Here is my background."
+        )
+
+        assert "production ML deployment" in context_of(client)["job_description"]
+
     def test_emotional_state_is_advisory_in_prompt(self) -> None:
         client = FakeClient(response_with_content(reply_json("Go on.")))
         GroqInterviewer(client=client).respond(

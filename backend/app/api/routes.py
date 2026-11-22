@@ -170,6 +170,8 @@ def process_interview_turn(
         updates["cv_text"] = request_body.cv_text
     if request_body.target_role:
         updates["target_role"] = request_body.target_role
+    if request_body.job_description:
+        updates["job_description"] = request_body.job_description
     if updates:
         state = state.model_copy(update=updates)
 

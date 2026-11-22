@@ -31,6 +31,7 @@ export async function submitInterviewTurn({
   emotionalState,
   cvText,
   targetRole,
+  jobDescription,
   signal,
 }) {
   const response = await fetch(`${API_BASE_URL}/v1/interview/turn`, {
@@ -42,6 +43,7 @@ export async function submitInterviewTurn({
       ...(emotionalState ? { emotional_state: emotionalState } : {}),
       ...(cvText ? { cv_text: cvText } : {}),
       ...(targetRole ? { target_role: targetRole } : {}),
+      ...(jobDescription ? { job_description: jobDescription } : {}),
     }),
     signal,
   });
