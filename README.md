@@ -285,6 +285,16 @@ browser stores it in the session and sends it with later turns. **No CV text is
 persisted on the server.** Scanned PDFs without a text layer are rejected with a
 clear error because they need OCR first.
 
+Removing the CV or clearing the role/job-description inputs removes that active
+context from subsequent chat and review requests immediately, even before another
+answer is submitted. It does not erase earlier chat messages or information
+already sent to Groq; use **New session** to clear the whole browser session.
+Requests already in progress retain the context they started with.
+
+For `/v1/interview/turn`, omitted context fields preserve their values in `state`.
+Explicit `null`, empty strings, or whitespace-only strings clear `cv_text`,
+`target_role`, or `job_description`; clearing `cv_text` also clears `cv_filename`.
+
 **Interviewer style** (in the same panel):
 
 - **Strict** is the default: one question without commentary.
