@@ -165,7 +165,7 @@ export default function App() {
 
       <footer>
         Dialogue policy, voice activity, transcription, and visual perception
-        stay local. Gemini may rewrite eligible replies only.
+        stay local. Groq may rewrite eligible replies only.
       </footer>
     </main>
   );

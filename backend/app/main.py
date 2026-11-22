@@ -10,7 +10,7 @@ from backend.app.perception.speech_to_text import (
     AudioTranscriber,
     FasterWhisperTranscriber,
 )
-from backend.app.reasoning.llm_agent import GeminiReplyGenerator
+from backend.app.reasoning.llm_agent import GroqReplyGenerator
 from backend.app.service import InterviewService
 
 _ALLOWED_ORIGINS = (
@@ -28,16 +28,14 @@ def create_app(
         version="0.1.0",
         description=(
             "Stateless interview API with deterministic dialogue policy, "
-            "optional local Faster-Whisper transcription, and optional Gemini "
+            "optional local Faster-Whisper transcription, and optional Groq "
             "reply rendering."
         ),
     )
     app.state.interview_service = (
         interview_service
         if interview_service is not None
-        else InterviewService(
-            reply_generator=GeminiReplyGenerator.from_env()
-        )
+        else InterviewService(reply_generator=GroqReplyGenerator.from_env())
     )
     app.state.audio_transcriber = (
         audio_transcriber

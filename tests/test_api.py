@@ -8,18 +8,18 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.main import create_app
-from backend.app.reasoning.llm_agent import GeminiReplyGenerator
+from backend.app.reasoning.llm_agent import GroqReplyGenerator
 from backend.app.schemas import SessionState, SessionStatus
 from backend.app.service import InterviewService
 
 
-class FailingModels:
-    def generate_content(self, **kwargs: Any) -> Any:
+class FailingCompletions:
+    def create(self, **kwargs: Any) -> Any:
         raise RuntimeError("network unavailable")
 
 
 class FailingClient:
-    models = FailingModels()
+    chat = type("Chat", (), {"completions": FailingCompletions()})()
 
 
 @pytest.fixture
@@ -173,9 +173,9 @@ def test_ended_session_remains_terminal_over_http(client: TestClient) -> None:
     assert body["updated_state"]["status"] == "ended"
 
 
-def test_gemini_failure_returns_200_with_observable_fallback() -> None:
+def test_groq_failure_returns_200_with_observable_fallback() -> None:
     service = InterviewService(
-        GeminiReplyGenerator(client=FailingClient())
+        GroqReplyGenerator(client=FailingClient())
     )
     with TestClient(create_app(service)) as client:
         response = client.post(
