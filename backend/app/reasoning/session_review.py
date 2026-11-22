@@ -228,10 +228,16 @@ class GroqReviewer:
                 },
             )
         except (TimeoutError, groq.APITimeoutError):
+            logger.warning("Groq session review failed: reason=timeout")
             return self._fallback(
                 turns, covered, missing, ReplyFallbackReason.TIMEOUT
             )
-        except Exception:
+        except Exception as error:
+            logger.warning(
+                "Groq session review failed: reason=sdk_error error_type=%s status=%s",
+                type(error).__name__,
+                error.status_code if isinstance(error, groq.APIStatusError) else None,
+            )
             return self._fallback(
                 turns, covered, missing, ReplyFallbackReason.SDK_ERROR
             )
@@ -242,6 +248,7 @@ class GroqReviewer:
                 raise ValueError("content must be text")
             parsed = ReviewPayload.model_validate_json(content)
         except (AttributeError, IndexError, TypeError, ValidationError, ValueError):
+            logger.warning("Groq session review failed: reason=malformed_output")
             return self._fallback(
                 turns, covered, missing, ReplyFallbackReason.MALFORMED_OUTPUT
             )

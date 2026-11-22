@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { fetchSessionReview } from "../services/interviewApi.js";
 
+const FALLBACK_MESSAGES = {
+  timeout: "Groq timed out while reviewing this session.",
+  sdk_error: "The Groq request failed. Check the backend log for its error type and HTTP status.",
+  malformed_output: "Groq returned a review that did not match the expected format.",
+};
+
 export default function SessionReview({ session, disabled, onReviewLoaded }) {
   const [review, setReview] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -51,8 +57,22 @@ export default function SessionReview({ session, disabled, onReviewLoaded }) {
             {review.turns} turn{review.turns === 1 ? "" : "s"} ·{" "}
             {review.review_source === "groq"
               ? "suggestions from Groq"
-              : "local suggestions"}
+              : review.review_source === "local_fallback"
+                ? "local fallback suggestions"
+                : "local suggestions"}
           </p>
+          {review.review_source === "local_fallback" && (
+            <p className="fallback-notice" role="status">
+              {FALLBACK_MESSAGES[review.fallback_reason] ?? "Groq could not complete this review."}{" "}
+              Showing local suggestions; coverage still comes from your answers.
+              You can select “Review this session” to try again.
+            </p>
+          )}
+          {review.review_source === "local" && (
+            <p className="observation-note">
+              Local review mode. Configure Groq on the backend for model-written suggestions.
+            </p>
+          )}
 
           <div className="review-columns">
             <div>

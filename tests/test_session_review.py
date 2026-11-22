@@ -6,6 +6,8 @@ import json
 from types import SimpleNamespace
 from typing import Any
 
+import groq
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -22,6 +24,7 @@ from backend.app.schemas import (
     ReplySource,
     SessionState,
 )
+from backend.app.service import InterviewService
 
 
 def response_with_content(content: Any) -> Any:
@@ -123,7 +126,7 @@ class TestGroqReviewer:
         assert review.suggestions
         assert "which metric you used" in review.suggestions[0]
 
-    def test_timeout_falls_back_with_reason(self) -> None:
+    def test_timeout_falls_back_with_reason(self, caplog: pytest.LogCaptureFixture) -> None:
         client = FakeClient(error=TimeoutError("slow"))
         review = GroqReviewer(client=client).review(
             state=SessionState(session_id="r3"),
@@ -133,8 +136,9 @@ class TestGroqReviewer:
 
         assert review.review_source == ReplySource.LOCAL_FALLBACK
         assert review.fallback_reason == ReplyFallbackReason.TIMEOUT
+        assert "reason=timeout" in caplog.text
 
-    def test_malformed_output_falls_back(self) -> None:
+    def test_malformed_output_falls_back(self, caplog: pytest.LogCaptureFixture) -> None:
         client = FakeClient(response_with_content("not json"))
         review = GroqReviewer(client=client).review(
             state=SessionState(session_id="r4"),
@@ -143,6 +147,7 @@ class TestGroqReviewer:
         )
 
         assert review.fallback_reason == ReplyFallbackReason.MALFORMED_OUTPUT
+        assert "reason=malformed_output" in caplog.text
 
     def test_items_are_trimmed_and_capped(self) -> None:
         payload = json.dumps({
@@ -181,10 +186,49 @@ class TestGroqReviewer:
         assert "deployment experience" in context["job_description"]
         assert "churn model" in context["cv_summary"]
 
+    def test_sdk_failure_keeps_private_payload_out_of_logs_and_response(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        private_text = "PRIVATE_CV_AND_KEY_SENTINEL"
+        error = groq.BadRequestError(
+            f"Provider echoed {private_text}",
+            response=httpx.Response(
+                400,
+                request=httpx.Request(
+                    "POST", "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {private_text}"},
+                ),
+            ),
+            body={"error": {"failed_generation": private_text}},
+        )
+        reviewer = GroqReviewer(client=FakeClient(error=error))
+        state = SessionState(
+            session_id="private-review",
+            turn_index=2,
+            cv_text=private_text,
+            conversation=[{"role": "candidate", "content": private_text}],
+        )
+        with TestClient(create_app(InterviewService(reviewer=reviewer))) as client:
+            response = client.post(
+                "/v1/interview/review",
+                json={"state": state.model_dump(mode="json")},
+            )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["review_source"] == "local_fallback"
+        assert body["fallback_reason"] == "sdk_error"
+        assert "a specific project" in body["missing"]
+        assert body["covered"] == []
+        assert body["questions_to_ask"] == []
+        assert "error_type=BadRequestError status=400" in caplog.text
+        assert private_text not in caplog.text
+        assert private_text not in response.text
+
 
 class TestReviewEndpoint:
     def test_review_endpoint_returns_coverage(self) -> None:
-        app = create_app()
+        app = create_app(InterviewService())
         client = TestClient(app)
         state = SessionState(session_id="ep", turn_index=3).model_dump(mode="json")
 
@@ -200,7 +244,7 @@ class TestReviewEndpoint:
         assert "review_source" in body
 
     def test_review_endpoint_rejects_missing_state(self) -> None:
-        app = create_app()
+        app = create_app(InterviewService())
         client = TestClient(app)
 
         response = client.post("/v1/interview/review", json={})
