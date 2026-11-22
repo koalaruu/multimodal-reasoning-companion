@@ -4,11 +4,14 @@ import {
   freshEmotionalState,
   summarizeFaceLandmarkerResult,
   unavailableVisualObservation,
+  VISION_MAX_AGE_MS,
 } from "./visualObservation.js";
 import { analyzeVision } from "../services/interviewApi.js";
 
 const INFERENCE_INTERVAL_MS = 200;
 const VISION_UPLOAD_INTERVAL_MS = 1000;
+const VISION_MIN_SAMPLES = 3;
+const VISION_PREVIOUS_SAMPLES = 4;
 
 const CAMERA_CONSTRAINTS = {
   audio: false,
@@ -43,17 +46,22 @@ export default function useVisualPerception() {
   const videoRef = useRef(null);
   const resourcesRef = useRef(null);
   const operationRef = useRef(0);
-  const lastUploadRef = useRef(0);
   // Facial evidence is timestamped so an old reading cannot outlive the camera.
   const emotionalRef = useRef(null);
   const analysisRef = useRef(null);
 
-  const clearEmotionalState = useCallback(() => {
-    analysisRef.current?.abort();
-    analysisRef.current = null;
+  const clearReading = useCallback(() => {
+    clearTimeout(emotionalRef.current?.expiry);
     emotionalRef.current = null;
     setEmotionalState(null);
   }, []);
+
+  const clearEmotionalState = useCallback(() => {
+    analysisRef.current?.abort();
+    analysisRef.current = null;
+    if (resourcesRef.current) resourcesRef.current.history = [];
+    clearReading();
+  }, [clearReading]);
 
   const releaseResources = useCallback((target = resourcesRef.current) => {
     if (!target) return;
@@ -90,6 +98,7 @@ export default function useVisualPerception() {
       landmarker: null,
       stream: null,
       video: null,
+      history: [],
     };
     resourcesRef.current = resources;
     let permission = "requesting";
@@ -112,6 +121,11 @@ export default function useVisualPerception() {
         releaseResources(resources);
         return;
       }
+      for (const track of resources.stream.getVideoTracks()) {
+        track.addEventListener("ended", () => {
+          if (isCurrent()) disableCamera();
+        }, { once: true });
+      }
 
       permission = "granted";
       resources.video = videoRef.current;
@@ -120,6 +134,7 @@ export default function useVisualPerception() {
       }
       resources.video.srcObject = resources.stream;
       await resources.video.play();
+      if (!isCurrent()) return;
       setObservation({
         ...unavailableVisualObservation(permission),
         cue: "loading_model",
@@ -140,6 +155,7 @@ export default function useVisualPerception() {
 
       let lastInferenceAt = -INFERENCE_INTERVAL_MS;
       let lastVideoTime = -1;
+      let lastUploadAt = -VISION_UPLOAD_INTERVAL_MS;
       const render = (timestamp) => {
         if (!isCurrent()) {
           return;
@@ -162,23 +178,46 @@ export default function useVisualPerception() {
             });
             setObservation(obs);
 
-            if (
-              timestamp - lastUploadRef.current >= VISION_UPLOAD_INTERVAL_MS &&
+            if (obs.face_count !== 1) {
+              if (analysisRef.current || emotionalRef.current || resources.history.length) {
+                clearEmotionalState();
+              }
+            } else if (
+              timestamp - lastUploadAt >= VISION_UPLOAD_INTERVAL_MS &&
               !analysisRef.current
             ) {
-              lastUploadRef.current = timestamp;
+              lastUploadAt = timestamp;
               const controller = new AbortController();
               analysisRef.current = controller;
-              analyzeVision({ observation: obs, signal: controller.signal })
-                .then((value) => {
-                  // A response from a stopped camera must never reach the session.
+              analyzeVision({
+                observation: obs,
+                previousObservations: resources.history,
+                signal: controller.signal,
+              })
+                .then(({ emotional_state: value, sample_count: count }) => {
+                  // Stop or loss of a single face invalidates the whole window.
                   if (!isCurrent() || controller.signal.aborted) return;
-                  const entry = { value, atMs: Date.now() };
-                  emotionalRef.current = entry;
-                  setEmotionalState(freshEmotionalState(entry));
+                  const age = Date.now() - obs.observed_at_ms;
+                  if (!value.face_available || age > VISION_MAX_AGE_MS) {
+                    clearEmotionalState();
+                    return;
+                  }
+                  resources.history.push(obs);
+                  if (resources.history.length > VISION_PREVIOUS_SAMPLES) resources.history.shift();
+                  if (count < VISION_MIN_SAMPLES) {
+                    clearReading();
+                    return;
+                  }
+                  clearTimeout(emotionalRef.current?.expiry);
+                  emotionalRef.current = {
+                    value,
+                    atMs: obs.observed_at_ms,
+                    expiry: setTimeout(clearReading, VISION_MAX_AGE_MS - age + 1),
+                  };
+                  setEmotionalState(value);
                 })
                 .catch(() => {
-                  // Camera loss or a rejected request simply leaves the signal absent.
+                  if (isCurrent() && !controller.signal.aborted) clearEmotionalState();
                 })
                 .finally(() => {
                   if (analysisRef.current === controller) {
@@ -215,28 +254,22 @@ export default function useVisualPerception() {
         ),
       );
     }
-  }, [releaseResources, clearEmotionalState]);
+  }, [releaseResources, clearEmotionalState, clearReading, disableCamera]);
 
   // Returns facial evidence only while the camera runs and the reading is recent.
   const currentEmotionalState = useCallback(() => {
     if (!resourcesRef.current) return null;
-    const entry = emotionalRef.current;
-    const value = freshEmotionalState(entry);
-    if (!value) {
-      if (entry) {
-        emotionalRef.current = null;
-        setEmotionalState(null);
-      }
-      return null;
-    }
+    const value = freshEmotionalState(emotionalRef.current);
+    if (!value && emotionalRef.current) clearReading();
     return value;
-  }, []);
+  }, [clearReading]);
 
   useEffect(
     () => () => {
       operationRef.current += 1;
       analysisRef.current?.abort();
       analysisRef.current = null;
+      clearTimeout(emotionalRef.current?.expiry);
       releaseResources();
     },
     [releaseResources],

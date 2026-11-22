@@ -147,19 +147,25 @@ export async function transcribeAudio({ audio, signal }) {
   return result;
 }
 
-export async function analyzeVision({ observation, signal }) {
+function visionPayload(observation) {
+  return {
+    face_available:
+      observation.face_available ??
+      (observation.availability === "available" && observation.face_count === 1),
+    face_count: observation.face_count,
+    inference_ms: observation.inference_ms,
+    observed_at_ms: observation.observed_at_ms,
+    blendshapes: observation.blendshapes,
+  };
+}
+
+export async function analyzeVision({ observation, previousObservations = [], signal }) {
   const response = await fetch(`${API_BASE_URL}/v1/vision/analyze`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      face_available:
-        observation.face_available ??
-        (observation.availability === "available" &&
-          observation.face_count > 0),
-      face_count: observation.face_count,
-      inference_ms: observation.inference_ms,
-      observed_at_ms: observation.observed_at_ms,
-      blendshapes: observation.blendshapes,
+      ...visionPayload(observation),
+      previous_observations: previousObservations.map(visionPayload),
     }),
     signal,
   });
@@ -169,8 +175,8 @@ export async function analyzeVision({ observation, signal }) {
   }
 
   const result = await response.json();
-  if (result.emotional_state == null) {
+  if (result?.emotional_state == null || !Number.isInteger(result.sample_count)) {
     throw new Error("Vision service returned an invalid response.");
   }
-  return result.emotional_state;
+  return result;
 }

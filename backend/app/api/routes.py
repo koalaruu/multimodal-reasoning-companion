@@ -32,7 +32,7 @@ from backend.app.schemas import (
     TurnResult,
     VisionObservation,
 )
-from backend.app.perception.vision_analyzer import analyze as analyze_vision
+from backend.app.perception.vision_analyzer import analyze_window
 from backend.app.service import InterviewService
 
 router = APIRouter()
@@ -277,10 +277,9 @@ async def extract_cv_endpoint(
 async def analyze_vision_endpoint(
     request_body: VisionAnalyzeRequest,
 ) -> VisionAnalyzeResponse:
-    """Map blendshape readings to a proxy emotional state via FACS rules.
+    """Map a client-held observation window to a smoothed FACS proxy.
 
-    This endpoint is stateless and does not store frames or blendshapes.
-    See README for scientific limitations of FACS-based emotion inference.
+    The endpoint does not retain samples or frames.
     """
     from backend.app.schemas import BlendshapeReading
 
@@ -299,5 +298,9 @@ async def analyze_vision_endpoint(
         observed_at_ms=request_body.observed_at_ms,
         blendshapes=readings,
     )
-    emotional_state = analyze_vision(observation)
-    return VisionAnalyzeResponse(emotional_state=emotional_state)
+    emotional_state, sample_count = analyze_window(
+        observation, request_body.previous_observations,
+    )
+    return VisionAnalyzeResponse(
+        emotional_state=emotional_state, sample_count=sample_count,
+    )

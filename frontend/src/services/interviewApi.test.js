@@ -84,6 +84,7 @@ test("vision analysis derives face_available from the observation shape", async 
           activated_aus: [],
           face_available: false,
         },
+        sample_count: 0,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
@@ -110,7 +111,7 @@ test("vision analysis derives face_available from the observation shape", async 
   assert.ok(!("availability" in body));
 });
 
-test("vision analysis marks face_available true for a single detected face", async () => {
+test("vision analysis sends recent single-face readings in capture order", async () => {
   let request;
   globalThis.fetch = async (url, options) => {
     request = { url, options };
@@ -123,12 +124,20 @@ test("vision analysis marks face_available true for a single detected face", asy
           activated_aus: ["AU6", "AU12"],
           face_available: true,
         },
+        sample_count: 3,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
   };
 
-  await analyzeVision({
+  const result = await analyzeVision({
+    previousObservations: [1_795_317_612_545, 1_795_317_613_545].map((at) => ({
+      availability: "available",
+      face_count: 1,
+      observed_at_ms: at,
+      blendshapes: [{ name: "mouthSmileLeft", score: 0.6 }],
+      top_blendshapes: [],
+    })),
     observation: {
       availability: "available",
       permission: "granted",
@@ -147,4 +156,19 @@ test("vision analysis marks face_available true for a single detected face", asy
   assert.deepEqual(body.blendshapes, [
     { name: "mouthSmileLeft", score: 0.8 },
   ]);
+  assert.deepEqual(body.previous_observations, [
+    {
+      face_available: true,
+      face_count: 1,
+      observed_at_ms: 1_795_317_612_545,
+      blendshapes: [{ name: "mouthSmileLeft", score: 0.6 }],
+    },
+    {
+      face_available: true,
+      face_count: 1,
+      observed_at_ms: 1_795_317_613_545,
+      blendshapes: [{ name: "mouthSmileLeft", score: 0.6 }],
+    },
+  ]);
+  assert.equal(result.sample_count, 3);
 });
