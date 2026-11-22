@@ -2,13 +2,15 @@
 
 A CPU-first adaptive interview-practice assistant built as an AI systems portfolio project. The project separates observable input processing, internal state, dialogue policy, and response generation so each decision can be tested without relying on one large model.
 
-The current milestone is a **React interview interface with local Faster-Whisper speech-to-text, audio turn-taking cues, opt-in MediaPipe Face Landmarker observations, and explainable answer-quality evidence**, backed by a stateless FastAPI service with optional Groq reply generation. Dialogue policy and state updates remain deterministic and fully testable offline; visual observations remain local to the browser and do not influence policy.
+The current milestone is a **React interview interface with local Faster-Whisper speech-to-text, audio turn-taking cues, opt-in MediaPipe Face Landmarker observations, and explainable answer-quality evidence**, backed by a stateless FastAPI service. Groq drives the conversation using the CV, job description, and dialogue history. Turn-taking stays deterministic and testable offline: audio readiness and one confident facial high-load signal can change the selected action, and both are measured in `eval/run_multimodal_ab.py`.
+
+**Start here for the results:** [`docs/technical-brief.md`](docs/technical-brief.md) — research question, architecture, measured results, and stated limitations on one page.
 
 ## Research question
 
 > Compared with a transcript-only assistant, can observable speech-activity and visual signals improve when the assistant waits, offers a hint, or asks a follow-up without making unsupported claims about the user's mental state?
 
-The text baseline establishes the control condition for that future comparison.
+The text baseline is the control condition; `eval/run_multimodal_ab.py` compares it against text+audio and text+audio+visual on identical inputs.
 
 ## Architecture
 
