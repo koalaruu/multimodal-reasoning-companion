@@ -113,6 +113,27 @@ def test_irrelevant_or_unclear_answers_request_clarification(
     assert "Please describe the AI project" in result.reply
 
 
+def test_repeated_unclear_answers_stop_repeating_clarification(
+    service: InterviewService,
+) -> None:
+    state = SessionState(session_id="repeat", clarifications_asked=2)
+
+    result = service.process_turn(state, "no")
+
+    assert result.decision.action == DialogueAction.OFFER_HINT
+    assert result.decision.reason == DecisionReason.CLARIFICATION_LIMIT_REACHED
+    assert "different angle" in result.reply
+
+
+def test_clarification_counter_increments_on_clarification(
+    service: InterviewService,
+) -> None:
+    result = service.process_turn(SessionState(session_id="counter"), "no")
+
+    assert result.decision.action == DialogueAction.REQUEST_CLARIFICATION
+    assert result.updated_state.clarifications_asked == 1
+
+
 def test_paraphrased_complete_answer_extracts_all_required_evidence(
     service: InterviewService,
 ) -> None:

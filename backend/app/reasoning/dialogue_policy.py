@@ -15,6 +15,10 @@ from backend.app.schemas import (
     SessionStatus,
 )
 
+# After this many clarification requests the policy stops repeating itself
+# and offers a concrete hint instead.
+_MAX_CLARIFICATIONS = 2
+
 
 def decide(
     state: SessionState,
@@ -47,6 +51,14 @@ def decide(
         return ActionDecision(
             action=DialogueAction.REQUEST_INPUT,
             reason=DecisionReason.INPUT_MISSING,
+        )
+    if (
+        evidence.relevance in {AnswerRelevance.IRRELEVANT, AnswerRelevance.UNCLEAR}
+        and state.clarifications_asked >= _MAX_CLARIFICATIONS
+    ):
+        return ActionDecision(
+            action=DialogueAction.OFFER_HINT,
+            reason=DecisionReason.CLARIFICATION_LIMIT_REACHED,
         )
     if evidence.relevance == AnswerRelevance.IRRELEVANT:
         return ActionDecision(

@@ -26,6 +26,8 @@ def apply_decision(state: SessionState, decision: ActionDecision) -> SessionStat
             + int(decision.action == DialogueAction.OFFER_HINT),
             "followups_asked": state.followups_asked
             + int(decision.action == DialogueAction.ASK_FOLLOWUP),
+            "clarifications_asked": state.clarifications_asked
+            + int(decision.action == DialogueAction.REQUEST_CLARIFICATION),
             "last_action": decision.action,
         }
     )

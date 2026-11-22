@@ -49,6 +49,7 @@ class DecisionReason(str, Enum):
     ANSWER_IRRELEVANT = "answer_irrelevant"
     ANSWER_UNCLEAR = "answer_unclear"
     PROJECT_EVIDENCE_MISSING = "project_evidence_missing"
+    CLARIFICATION_LIMIT_REACHED = "clarification_limit_reached"
     CLASS_LEVEL_PERFORMANCE_MISSING = "class_level_performance_missing"
     EVALUATION_EVIDENCE_MISSING = "evaluation_evidence_missing"
     ANSWER_COMPLETE = "answer_complete"
@@ -168,6 +169,7 @@ class SessionState(DomainModel):
     hints_offered: int = Field(default=0, ge=0)
     followups_asked: int = Field(default=0, ge=0)
     last_action: DialogueAction | None = None
+    clarifications_asked: int = Field(default=0, ge=0)
     emotional_state: EmotionalState | None = None
 
     @field_validator("session_id")

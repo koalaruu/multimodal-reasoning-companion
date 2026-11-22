@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from backend.app.schemas import ActionDecision, DialogueAction, FollowupTopic
+from backend.app.schemas import (
+    ActionDecision,
+    DecisionReason,
+    DialogueAction,
+    FollowupTopic,
+)
 
 _REPLIES = {
     (DialogueAction.OFFER_HINT, FollowupTopic.NONE): (
@@ -34,4 +39,9 @@ _REPLIES = {
 def generate_local_reply(decision: ActionDecision) -> str:
     """Generate wording without changing the policy decision."""
 
+    if decision.reason == DecisionReason.CLARIFICATION_LIMIT_REACHED:
+        return (
+            "Let's take a different angle. Pick any project you worked on, "
+            "name one thing it had to get right, and say how you checked it did."
+        )
     return _REPLIES[(decision.action, decision.followup_topic)]
