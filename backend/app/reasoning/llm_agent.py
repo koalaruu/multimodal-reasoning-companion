@@ -49,7 +49,6 @@ _FORBIDDEN_BY_ACTION: dict[DialogueAction, tuple[str, ...]] = {
         "how did you evaluate",
     ),
     DialogueAction.ANSWER_META_QUESTION: (
-        "describe your project",
         "tell me about your",
     ),
 }
@@ -137,7 +136,7 @@ def _respects_action_guard(action: DialogueAction, reply: str) -> bool:
         if forbidden in lowered:
             return False
 
-    if action in _NO_QUESTION_ACTIONS and "?" in reply:
+    if action in _NO_QUESTION_ACTIONS and reply.rstrip().endswith("?"):
         return False
 
     return True
