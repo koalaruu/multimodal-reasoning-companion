@@ -63,7 +63,7 @@ class FasterWhisperTranscriber:
     def __init__(
         self,
         *,
-        model_name: str = "base",
+        model_name: str = "small",
         device: str = "cpu",
         compute_type: str = "int8",
         language: str | None = None,
@@ -113,7 +113,7 @@ class FasterWhisperTranscriber:
             ) from error
 
         return cls(
-            model_name=source.get("WHISPER_MODEL", "base"),
+            model_name=source.get("WHISPER_MODEL", "small"),
             device=source.get("WHISPER_DEVICE", "cpu"),
             compute_type=source.get("WHISPER_COMPUTE_TYPE", "int8"),
             language=source.get("WHISPER_LANGUAGE", "auto"),

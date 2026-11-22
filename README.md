@@ -111,10 +111,10 @@ Camera perception is optional. The browser downloads the versioned Face Landmark
 
 ### Local speech-to-text
 
-`backend/requirements-stt.txt` installs Faster-Whisper 1.2.1 and pins PyAV below 19 because that Faster-Whisper release still calls the pre-19 `av.open` API. Defaults are CPU `int8`, the multilingual `base` model, automatic English/Indonesian language detection, and a 60-second decoded-audio limit:
+`backend/requirements-stt.txt` installs Faster-Whisper 1.2.1 and pins PyAV below 19 because that Faster-Whisper release still calls the pre-19 `av.open` API. Defaults are CPU `int8`, the higher-capacity multilingual `small` model, automatic English/Indonesian language detection, and a 60-second decoded-audio limit:
 
 ```powershell
-$env:WHISPER_MODEL = "base"
+$env:WHISPER_MODEL = "small"
 $env:WHISPER_DEVICE = "cpu"
 $env:WHISPER_COMPUTE_TYPE = "int8"
 $env:WHISPER_LANGUAGE = "auto"
@@ -122,6 +122,8 @@ $env:WHISPER_MAX_AUDIO_SECONDS = "60"
 ```
 
 `WHISPER_LANGUAGE=auto` lets the multilingual model detect each clip. Set it to `en` or `id` to pin English or Indonesian when short or noisy recordings are misdetected. English-only models such as `base.en` are accepted only with `WHISPER_LANGUAGE=en`.
+
+`small` requires more download size, memory, and CPU time than `base`; actual bilingual accuracy and latency still require a representative English/Indonesian benchmark. The pinned `base.en` evaluation below remains a historical English baseline and is not relabeled as evidence for `small`.
 
 The first transcription downloads model weights from Hugging Face and loads them lazily. Later requests use the local cache. Model weights may persist in the Hugging Face cache; candidate audio does not. The project reads process environment variables and does not silently load `.env`.
 

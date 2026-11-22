@@ -87,7 +87,7 @@ def test_faster_whisper_adapter_consumes_segments_and_reuses_model() -> None:
     assert first.processing_duration_ms >= 0
     assert second.text == first.text
     assert factory_calls == [
-        ("base", {"device": "cpu", "compute_type": "int8"})
+        ("small", {"device": "cpu", "compute_type": "int8"})
     ]
     assert len(model.calls) == 2
     assert model.calls[0][1] == {

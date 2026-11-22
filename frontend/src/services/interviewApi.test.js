@@ -20,7 +20,7 @@ test("transcription sends the audio blob without JSON conversion", async () => {
         language_probability: 0.98,
         audio_duration_ms: 1200,
         processing_duration_ms: 300,
-        model: "base",
+        model: "small",
       }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
