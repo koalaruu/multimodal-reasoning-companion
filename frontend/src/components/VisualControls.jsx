@@ -104,9 +104,12 @@ export default function VisualControls({
           </div>
           </details>
 
+          {observation.cue === "face_detected" && !emotionalState && (
+            <p className="observation-note">Waiting for recent facial samples.</p>
+          )}
           {emotionalState && emotionalState.face_available && (
             <div className="emotion-readout">
-              <h3>Proxy emotional state</h3>
+              <h3>Smoothed facial expression proxy</h3>
               <div className="emotion-dominant">
                 <span className="emotion-label">
                   {emotionalState.dominant_emotion}
@@ -117,7 +120,7 @@ export default function VisualControls({
               </div>
               {emotionalState.activated_aus?.length > 0 && (
                 <p className="activated-aus">
-                  Activated AU proxies: {emotionalState.activated_aus.join(", ")}
+                  AU proxies observed in the window: {emotionalState.activated_aus.join(", ")}
                 </p>
               )}
               {Object.entries(emotionalState.emotion_scores)
@@ -138,8 +141,7 @@ export default function VisualControls({
                 ))}
               {emotionalState.dominant_emotion === "neutral" && (
                 <p className="emotion-disclaimer">
-                  No AU combination cleared the activation threshold, so the
-                  resting face reads as neutral.
+                  No averaged expression proxy cleared the activation threshold.
                 </p>
               )}
               <p className="emotion-disclaimer">

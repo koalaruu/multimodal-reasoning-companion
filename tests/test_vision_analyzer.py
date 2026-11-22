@@ -17,6 +17,7 @@ from backend.app.schemas import (
     EmotionLabel,
     VisionObservation,
 )
+from backend.app.service import InterviewService
 
 
 def _reading(name: str, score: float) -> BlendshapeReading:
@@ -230,3 +231,68 @@ class TestVisionEndpoint:
         )
         assert resp.status_code == 200
         assert resp.json()["emotional_state"]["face_available"] is True
+
+    def test_one_spike_and_sustained_signal_have_different_dialogue_actions(self) -> None:
+        client = TestClient(create_app(InterviewService()))
+        readings = [
+            _reading(name, 0.88) for name in (
+                "browDownLeft", "eyeWideLeft", "eyeSquintLeft", "lipPress", "mouthClose",
+            )
+        ]
+        quiet = [
+            _obs([], observed_at_ms=at).model_dump() for at in (1_000, 2_000)
+        ]
+        spike = _obs(readings, observed_at_ms=3_000).model_dump()
+        sustained = _obs(readings, observed_at_ms=4_000).model_dump()
+
+        for sample, history, expected_score, expect_pause in (
+            (spike, quiet, 0.293, False),
+            (sustained, [*quiet, spike], 0.44, True),
+        ):
+            vision = client.post(
+                "/v1/vision/analyze",
+                json={**sample, "previous_observations": history},
+            )
+            assert vision.status_code == 200
+            reading = vision.json()
+            assert reading["sample_count"] == len(history) + 1
+            emotional_state = reading["emotional_state"]
+            assert emotional_state["emotion_scores"]["angry"] == pytest.approx(expected_score)
+
+            turn = client.post(
+                "/v1/interview/turn",
+                json={
+                    "state": {"session_id": "smoothing-test"},
+                    "candidate_input": "I built a Flutter app.",
+                    "emotional_state": emotional_state,
+                },
+            )
+            assert turn.status_code == 200
+            assert (turn.json()["decision"]["action"] == "give_space") is expect_pause
+
+    @pytest.mark.parametrize("face_count", [0, 2])
+    def test_current_no_face_or_multiple_faces_cannot_reuse_history(self, face_count: int) -> None:
+        client = TestClient(create_app(InterviewService()))
+        previous = _obs([_reading("mouthSmileLeft", 0.8)], observed_at_ms=1_000)
+        current = VisionObservation(
+            face_available=face_count > 0, face_count=face_count, observed_at_ms=2_000,
+        )
+        response = client.post(
+            "/v1/vision/analyze",
+            json={**current.model_dump(), "previous_observations": [previous.model_dump()]},
+        )
+        assert response.status_code == 200
+        assert response.json()["sample_count"] == 0
+        assert response.json()["emotional_state"]["face_available"] is False
+
+    def test_window_excludes_previous_face_after_capture_gap(self) -> None:
+        client = TestClient(create_app(InterviewService()))
+        previous = _obs([_reading("mouthSmileLeft", 0.8)], observed_at_ms=1_000)
+        current = _obs([], observed_at_ms=6_000)
+        response = client.post(
+            "/v1/vision/analyze",
+            json={**current.model_dump(), "previous_observations": [previous.model_dump()]},
+        )
+        assert response.status_code == 200
+        assert response.json()["sample_count"] == 1
+        assert response.json()["emotional_state"]["emotion_scores"]["happy"] == 0

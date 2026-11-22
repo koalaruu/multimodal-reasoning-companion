@@ -12,6 +12,7 @@ from backend.app.schemas import (
     InterviewMode,
     ReplySource,
     SessionState,
+    VisionObservation,
 )
 
 
@@ -77,9 +78,13 @@ class VisionAnalyzeRequest(BaseModel):
     inference_ms: float | None = None
     observed_at_ms: int | None = None
     blendshapes: list[dict[str, object]] = Field(default_factory=list)
+    previous_observations: list[VisionObservation] = Field(
+        default_factory=list, max_length=4,
+    )
 
 
 class VisionAnalyzeResponse(DomainModel):
     """Emotional state derived from blendshape FACS mapping."""
 
     emotional_state: EmotionalState
+    sample_count: int = Field(ge=0, le=5)

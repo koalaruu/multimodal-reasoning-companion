@@ -285,13 +285,23 @@ This endpoint is clip-based rather than streaming: no audio is uploaded until re
 
 **Enable camera** requests browser camera permission and starts MediaPipe Face Landmarker in `VIDEO` mode at no more than five inferences per second. The application reports model availability, face count, inference latency, up to five raw blendshape coefficients, and a proxy emotional state when exactly one face is visible. Coefficients and emotional state are suppressed for multiple faces to avoid ambiguous attribution.
 
-Blendshape coefficients are sent to the local FastAPI backend once per second for FACS proxy mapping. Frames themselves are not uploaded; only the 52 blendshape values (name and score) are transmitted. The backend maps them to FACS action unit proxies following Ekman & Friesen (1978) documented AU-emotion combinations and returns a dominant emotion label with confidence.
+About once per second, the browser sends the latest single-face blendshape
+coefficients and up to four previous samples to the local FastAPI backend.
+The backend maps each sample to FACS action unit proxies (Ekman & Friesen, 1978)
+and averages the expression scores over the window before selecting the
+dominant label. The dashboard and interview start using that reading after
+three valid samples. Gaps over four seconds break the window, and older
+samples are excluded after six seconds. This trades a short warm-up and
+response lag for less reliance on one frame.
 
 All frame processing occurs in the browser. Frames are not sent to FastAPI, Groq, storage, or application logs. Blendshape coefficients are sent only to the local backend and are not persisted. **Stop camera**, **Reset session**, and component unmount stop every camera track and close the Face Landmarker runtime. Camera denial, missing hardware, model-loading failure, or inference failure leaves text and audio available.
 
-The emotional state is attached to `SessionState`, read by the deterministic dialogue policy, and provided to the Groq LLM as advisory context.
+The smoothed reading is attached to `SessionState`, read by the deterministic
+dialogue policy, and provided to the Groq LLM as advisory context.
 
-**The policy now acts on one facial signal.** When the reading is a confident high-arousal emotion (`angry`, `fearful`, `disgusted` with confidence >= 0.35) and the alternative would add pressure, the policy returns `give_space` instead of another question. Constraints:
+When the smoothed proxy is `angry`, `fearful`, or `disgusted` with confidence
+>= 0.35, and the alternative would add pressure, the policy returns `give_space`
+instead of another question. Constraints:
 
 - explicit requests always win — a hint request still gets a hint;
 - it fires at most once per session (`give_space_offered`);
@@ -676,7 +686,7 @@ This is an integration benchmark, not evidence of demographic fairness, webcam r
 - Microphone denial or transcription failure leaves the complete text workflow available.
 - Missing audio is represented as `unavailable`, never as silence or a neutral psychological state.
 - Text heuristics, audio energy, transcripts, and facial blendshapes do **not** measure stress, focus, mood, honesty, personality, competence, or hiring suitability.
-- Camera use is opt-in. Frames remain in browser memory, are never uploaded or persisted; only 52 blendshape coefficients reach the local API. Model acquisition still requires a network request to Google's versioned model asset.
+- Camera use is opt-in. Frames remain in browser memory, are never uploaded or persisted; only blendshape samples reach the local API. Model acquisition still requires a network request to Google's versioned model asset.
 
 ### Facial evidence freshness
 
@@ -684,10 +694,10 @@ A face reading is evidence with a timestamp, not a permanent property of the ses
 
 | Situation | Behaviour |
 |---|---|
-| Camera running, reading < 4 s old | Sent with the turn; may produce `give_space` |
-| Camera running, reading older than 4 s | Treated as absent |
-| Camera stopped, denied, or failed | Cleared immediately; not sent |
-| Analysis response arrives after the camera stopped | Discarded, not applied |
+| Camera running, at least three continuous samples, newest capture ≤ 4 s old | Smoothed reading sent with the turn; may produce `give_space` |
+| Newest capture older than 4 s | Hidden and treated as absent even if the API replied late |
+| No face, multiple faces, or camera stopped, denied, or failed | Reading and rolling window cleared immediately |
+| Analysis response arrives after camera stop or face loss | Discarded, not applied |
 | Analysis request already in flight when stopped | Aborted |
 
 The client sends `emotional_state: null` explicitly when it has no current reading. The backend clears the stored value on explicit `null` and preserves it when the field is omitted, matching the context-field convention. This means a stopped camera cannot leave the policy acting on a face that is no longer observed.

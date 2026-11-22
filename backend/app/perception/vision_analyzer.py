@@ -24,6 +24,8 @@ from backend.app.schemas import (
 # while preserving genuine activations. This is a tunable heuristic, not
 # a validated psychometric threshold.
 _ACTIVATION_THRESHOLD = 0.15
+_MAX_SAMPLE_GAP_MS = 4_000
+_MAX_WINDOW_AGE_MS = 6_000
 
 # MediaPipe blendshape name → FACS AU proxy.
 # Based on anatomical correspondence documented at CMU FACS reference.
@@ -199,11 +201,11 @@ def _dominant_emotion(
 def analyze(observation: VisionObservation) -> EmotionalState:
     """Convert a vision observation into a proxy emotional state.
 
-    If no face is detected, returns face_available=False with neutral
-    scores. Downstream consumers MUST check face_available before using
+    Unless exactly one face is detected, returns face_available=False with
+    neutral scores. Downstream consumers MUST check face_available before using
     the emotional state for any decision.
     """
-    if not observation.face_available or observation.face_count == 0:
+    if not observation.face_available or observation.face_count != 1:
         return EmotionalState(
             face_available=False,
             dominant_emotion=EmotionLabel.NEUTRAL,
@@ -273,7 +275,7 @@ def average_emotional_state(
         all_emotions.update(s.emotion_scores.keys())
 
     avg_scores: dict[str, float] = {}
-    for emotion in all_emotions:
+    for emotion in sorted(all_emotions):
         values = [s.emotion_scores.get(emotion, 0.0) for s in valid]
         avg_scores[emotion] = round(sum(values) / len(values), 3)
 
@@ -290,3 +292,36 @@ def average_emotional_state(
         emotion_scores=avg_scores,
         activated_aus=sorted(all_aus),
     )
+
+
+def analyze_window(
+    observation: VisionObservation,
+    previous_observations: list[VisionObservation],
+) -> tuple[EmotionalState, int]:
+    """Average up to five contiguous single-face observations, oldest first."""
+    current = analyze(observation)
+    if not current.face_available:
+        return current, 0
+    newest_at = observation.observed_at_ms
+    if newest_at is None:
+        return current, 1
+
+    next_at = newest_at
+    newest_first: list[EmotionalState] = []
+    for previous in reversed(previous_observations[-4:]):
+        at = previous.observed_at_ms
+        if (
+            at is None
+            or not 0 < next_at - at <= _MAX_SAMPLE_GAP_MS
+            or newest_at - at > _MAX_WINDOW_AGE_MS
+            or not previous.face_available
+            or previous.face_count != 1
+        ):
+            break
+        newest_first.append(analyze(previous))
+        next_at = at
+
+    if not newest_first:
+        return current, 1
+    history = update_moving_average(newest_first[::-1], current)
+    return average_emotional_state(history), len(history)
