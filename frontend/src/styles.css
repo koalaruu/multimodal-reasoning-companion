@@ -1029,3 +1029,38 @@ footer {
   max-height: 96px;
   overflow: hidden;
 }
+
+.session-review .review-body {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.session-review h3 {
+  margin: 0 0 6px;
+  color: #7a8580;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.review-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.review-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.76rem;
+  line-height: 1.6;
+}
+
+.review-list.covered li::marker {
+  color: #3f6f5a;
+}
+
+.review-list.missing li::marker {
+  color: #a2664f;
+}

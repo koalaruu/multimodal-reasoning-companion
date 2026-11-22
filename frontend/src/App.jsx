@@ -6,6 +6,7 @@ import AudioControls from "./components/AudioControls.jsx";
 import ChatBox from "./components/ChatBox.jsx";
 import DecisionMonitor from "./components/DecisionMonitor.jsx";
 import CvUpload from "./components/CvUpload.jsx";
+import SessionReview from "./components/SessionReview.jsx";
 import VisualControls from "./components/VisualControls.jsx";
 import { submitInterviewTurn } from "./services/interviewApi.js";
 
@@ -168,6 +169,10 @@ export default function App() {
         videoRef={vision.videoRef}
         onEnable={vision.enableCamera}
         onDisable={vision.disableCamera}
+      />
+      <SessionReview
+        session={session}
+        disabled={session.turn_index < 2 || sending}
       />
       <div className="workspace">
         <ChatBox

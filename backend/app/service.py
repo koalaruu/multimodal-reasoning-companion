@@ -21,6 +21,10 @@ from backend.app.perception.answer_quality import extract_answer_quality
 from backend.app.perception.text_signals import extract_explicit_signals
 from backend.app.reasoning.dialogue_policy import decide
 from backend.app.reasoning.groq_interviewer import GroqInterviewer
+from backend.app.reasoning.session_review import (
+    GroqReviewer,
+    compute_coverage,
+)
 from backend.app.reasoning.response_generator import generate_local_reply
 from backend.app.schemas import (
     ActionDecision,
@@ -52,9 +56,38 @@ class InterviewService:
     """Run one interview turn with Groq as the conversational driver."""
 
     def __init__(
-        self, interviewer: GroqInterviewer | None = None
+        self,
+        interviewer: GroqInterviewer | None = None,
+        reviewer: GroqReviewer | None = None,
     ) -> None:
         self._interviewer = interviewer
+        self._reviewer = reviewer
+
+    def review_session(self, state: SessionState):
+        """Summarize a finished practice session.
+
+        covered/missing come from accumulated evidence and are deterministic.
+        suggestions/questions come from Groq and are labelled with their source.
+        """
+
+        covered, missing = compute_coverage(state.cumulative_evidence)
+        if self._reviewer is None:
+            from backend.app.reasoning.session_review import (
+                _local_suggestions,
+            )
+            from backend.app.schemas import SessionReview, ReplySource
+
+            return SessionReview(
+                turns=state.turn_index,
+                covered=covered,
+                missing=missing,
+                suggestions=_local_suggestions(missing),
+                questions_to_ask=[],
+                review_source=ReplySource.LOCAL,
+            )
+        return self._reviewer.review(
+            state=state, covered=covered, missing=missing
+        )
 
     def process_turn(
         self,

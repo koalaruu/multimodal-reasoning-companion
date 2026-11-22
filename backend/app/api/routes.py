@@ -11,6 +11,7 @@ from starlette.concurrency import run_in_threadpool
 from backend.app.api.schemas import (
     CvUploadResponse,
     HealthResponse,
+    InterviewReviewRequest,
     InterviewTurnRequest,
     TranscriptionResponse,
     VisionAnalyzeRequest,
@@ -24,7 +25,11 @@ from backend.app.perception.speech_to_text import (
     NoSpeechDetectedError,
     TranscriberUnavailableError,
 )
-from backend.app.schemas import TurnResult, VisionObservation
+from backend.app.schemas import (
+    SessionReview,
+    TurnResult,
+    VisionObservation,
+)
 from backend.app.perception.vision_analyzer import analyze as analyze_vision
 from backend.app.service import InterviewService
 
@@ -180,6 +185,23 @@ def process_interview_turn(
         candidate_input=request_body.candidate_input,
         emotional_state=request_body.emotional_state,
     )
+
+
+@router.post(
+    "/v1/interview/review",
+    response_model=SessionReview,
+    tags=["interview"],
+)
+def review_interview_session(
+    request_body: InterviewReviewRequest,
+    service: Annotated[InterviewService, Depends(get_interview_service)],
+) -> SessionReview:
+    """Summarize a finished practice session.
+
+    covered and missing are derived from accumulated evidence and are
+    deterministic. suggestions and questions_to_ask are model-written.
+    """
+    return service.review_session(request_body.state)
 
 
 @router.post(
