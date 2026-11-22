@@ -1,4 +1,4 @@
-"""Gemini-backed reply rendering with deterministic local fallback."""
+"""Groq-backed reply rendering with deterministic local fallback."""
 
 from __future__ import annotations
 
@@ -9,9 +9,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Self
 
-import httpx2
-from google import genai
-from google.genai import types
+import groq
+from groq import Groq
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from backend.app.schemas import (
@@ -21,9 +20,15 @@ from backend.app.schemas import (
     ReplySource,
 )
 
-DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"
+DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b"
+SUPPORTED_GROQ_MODELS = frozenset(
+    {
+        "openai/gpt-oss-20b",
+        "openai/gpt-oss-120b",
+    }
+)
 _MAX_REPLY_LENGTH = 1_200
-_GEMINI_ACTIONS = frozenset(
+_GROQ_ACTIONS = frozenset(
     {
         DialogueAction.OFFER_HINT,
         DialogueAction.ASK_FOLLOWUP,
@@ -54,8 +59,8 @@ Rules:
 logger = logging.getLogger(__name__)
 
 
-class GeminiReplyPayload(BaseModel):
-    """The only data Gemini may supply to the application."""
+class GroqReplyPayload(BaseModel):
+    """The only data Groq may supply to the application."""
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -69,46 +74,50 @@ class ReplyGenerationResult:
     fallback_reason: ReplyFallbackReason | None = None
 
 
-class GeminiReplyGenerator:
-    """Render eligible replies with Gemini while preserving local policy."""
+class GroqReplyGenerator:
+    """Render eligible replies with Groq while preserving local policy."""
 
     def __init__(
         self,
         *,
         api_key: str | None = None,
-        model: str = DEFAULT_GEMINI_MODEL,
+        model: str = DEFAULT_GROQ_MODEL,
         timeout_seconds: float = 8.0,
         client: Any | None = None,
     ) -> None:
         if timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive")
-        if not model.strip():
-            raise ValueError("model must not be blank")
+
+        normalized_model = model.strip()
+        if normalized_model not in SUPPORTED_GROQ_MODELS:
+            supported = ", ".join(sorted(SUPPORTED_GROQ_MODELS))
+            raise ValueError(
+                f"model must support strict Groq structured outputs: {supported}"
+            )
 
         normalized_key = api_key.strip() if api_key else ""
-        self._model = model.strip()
+        self._model = normalized_model
         self._client = client
         if self._client is None and normalized_key:
-            self._client = genai.Client(
+            self._client = Groq(
                 api_key=normalized_key,
-                http_options=types.HttpOptions(
-                    timeout=max(1, round(timeout_seconds * 1_000))
-                ),
+                timeout=timeout_seconds,
+                max_retries=0,
             )
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Self:
         source = os.environ if env is None else env
-        api_key = source.get("GEMINI_API_KEY", "").strip()
+        api_key = source.get("GROQ_API_KEY", "").strip()
         if not api_key:
             return cls()
 
-        model = source.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL).strip()
-        raw_timeout = source.get("GEMINI_TIMEOUT_SECONDS", "8").strip()
+        model = source.get("GROQ_MODEL", DEFAULT_GROQ_MODEL).strip()
+        raw_timeout = source.get("GROQ_TIMEOUT_SECONDS", "8").strip()
         try:
             timeout_seconds = float(raw_timeout)
         except ValueError as error:
-            raise ValueError("GEMINI_TIMEOUT_SECONDS must be a number") from error
+            raise ValueError("GROQ_TIMEOUT_SECONDS must be a number") from error
         return cls(
             api_key=api_key,
             model=model,
@@ -121,10 +130,10 @@ class GeminiReplyGenerator:
         candidate_input: str,
         local_reply: str,
     ) -> ReplyGenerationResult:
-        if decision.action not in _GEMINI_ACTIONS or self._client is None:
+        if decision.action not in _GROQ_ACTIONS or self._client is None:
             return self._result(local_reply, ReplySource.LOCAL)
 
-        contents = json.dumps(
+        policy_context = json.dumps(
             {
                 "action": decision.action.value,
                 "reason": decision.reason.value,
@@ -133,34 +142,39 @@ class GeminiReplyGenerator:
             },
             ensure_ascii=False,
         )
-        config = types.GenerateContentConfig(
-            system_instruction=_SYSTEM_INSTRUCTION,
-            temperature=0.2,
-            max_output_tokens=256,
-            response_mime_type="application/json",
-            response_schema=GeminiReplyPayload,
-        )
+        response_format = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "interview_reply",
+                "strict": True,
+                "schema": GroqReplyPayload.model_json_schema(),
+            },
+        }
 
         try:
-            response = self._client.models.generate_content(
+            response = self._client.chat.completions.create(
                 model=self._model,
-                contents=contents,
-                config=config,
+                messages=[
+                    {"role": "system", "content": _SYSTEM_INSTRUCTION},
+                    {"role": "user", "content": policy_context},
+                ],
+                temperature=0.2,
+                max_completion_tokens=512,
+                reasoning_effort="low",
+                include_reasoning=False,
+                response_format=response_format,
             )
-        except (TimeoutError, httpx2.TimeoutException):
+        except (TimeoutError, groq.APITimeoutError):
             return self._fallback(local_reply, ReplyFallbackReason.TIMEOUT)
         except Exception:
             return self._fallback(local_reply, ReplyFallbackReason.SDK_ERROR)
 
-        parsed = getattr(response, "parsed", None)
         try:
-            if isinstance(parsed, GeminiReplyPayload):
-                payload = parsed
-            elif isinstance(parsed, dict):
-                payload = GeminiReplyPayload.model_validate(parsed)
-            else:
-                raise ValueError("unsupported parsed response")
-        except (ValidationError, ValueError):
+            content = response.choices[0].message.content
+            if not isinstance(content, str):
+                raise ValueError("response content must be text")
+            payload = GroqReplyPayload.model_validate_json(content)
+        except (AttributeError, IndexError, TypeError, ValidationError, ValueError):
             return self._fallback(
                 local_reply, ReplyFallbackReason.MALFORMED_OUTPUT
             )
@@ -168,7 +182,7 @@ class GeminiReplyGenerator:
         reply = payload.reply.strip()
         if not reply or len(reply) > _MAX_REPLY_LENGTH or "\x00" in reply:
             return self._fallback(local_reply, ReplyFallbackReason.INVALID_REPLY)
-        return self._result(reply, ReplySource.GEMINI)
+        return self._result(reply, ReplySource.GROQ)
 
     def _fallback(
         self, local_reply: str, reason: ReplyFallbackReason

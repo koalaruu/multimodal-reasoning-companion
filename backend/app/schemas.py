@@ -50,7 +50,7 @@ class SessionStatus(str, Enum):
 
 class ReplySource(str, Enum):
     LOCAL = "local"
-    GEMINI = "gemini"
+    GROQ = "groq"
     LOCAL_FALLBACK = "local_fallback"
 
 

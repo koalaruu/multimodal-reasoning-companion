@@ -7,7 +7,7 @@ from backend.app.perception.answer_quality import extract_answer_quality
 from backend.app.perception.text_signals import extract_explicit_signals
 from backend.app.reasoning.dialogue_policy import decide
 from backend.app.reasoning.llm_agent import (
-    GeminiReplyGenerator,
+    GroqReplyGenerator,
     ReplyGenerationResult,
 )
 from backend.app.reasoning.response_generator import generate_local_reply
@@ -18,7 +18,7 @@ class InterviewService:
     """Run the offline text pipeline without transport or network dependencies."""
 
     def __init__(
-        self, reply_generator: GeminiReplyGenerator | None = None
+        self, reply_generator: GroqReplyGenerator | None = None
     ) -> None:
         self._reply_generator = reply_generator
 

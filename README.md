@@ -2,7 +2,7 @@
 
 A CPU-first adaptive interview-practice assistant built as an AI systems portfolio project. The project separates observable input processing, internal state, dialogue policy, and response generation so each decision can be tested without relying on one large model.
 
-The current milestone is a **React interview interface with local Faster-Whisper speech-to-text, audio turn-taking cues, opt-in MediaPipe Face Landmarker observations, and explainable answer-quality evidence**, backed by a stateless FastAPI service with optional Gemini reply generation. Dialogue policy and state updates remain deterministic and fully testable offline; visual observations remain local to the browser and do not influence policy.
+The current milestone is a **React interview interface with local Faster-Whisper speech-to-text, audio turn-taking cues, opt-in MediaPipe Face Landmarker observations, and explainable answer-quality evidence**, backed by a stateless FastAPI service with optional Groq reply generation. Dialogue policy and state updates remain deterministic and fully testable offline; visual observations remain local to the browser and do not influence policy.
 
 ## Research question
 
@@ -32,9 +32,9 @@ flowchart LR
     C --> D
     E[Session state] --> D
     D --> F[Immutable state<br/>transition]
-    D --> G{Eligible action and<br/>Gemini configured?}
+    D --> G{Eligible action and<br/>Groq configured?}
     G -->|No| H[Local reply]
-    G -->|Yes| I[Gemini structured<br/>reply only]
+    G -->|Yes| I[Groq structured<br/>reply only]
     I -->|Failure or invalid| H
     F --> J[Turn result]
     H --> J
@@ -47,11 +47,11 @@ flowchart LR
 |---|---|---|
 | `perception` | Detect explicit controls and answer evidence; transcribe explicit audio clips locally | Infer emotion, score the candidate, or choose the final action |
 | `cognitive` | Apply immutable session-state transitions | Extract evidence, generate dialogue, or call a model |
-| `reasoning` | Apply one documented policy, render local replies, and optionally request one structured Gemini reply | Allow Gemini to change an action, reason, or state |
+| `reasoning` | Apply one documented policy, render local replies, and optionally request one structured Groq reply | Allow Groq to change an action, reason, or state |
 | `service` | Orchestrate one text turn and expose reply source/fallback metadata | Persist transcripts or duplicate policy rules |
 | `api` | Validate text requests and bounded audio streams, then delegate to the correct local component | Store sessions or media, duplicate policy, or expose internal errors |
 | `frontend` | Keep the session in memory, derive voice-activity cues, record explicit voice answers, and run opt-in Face Landmarker inference locally | Auto-submit transcripts, upload or persist camera frames, infer psychological state, or let visual observations change policy |
-| `eval` | Exercise deterministic domain and timing behavior | Start Gemini or claim human validity from fixtures |
+| `eval` | Exercise deterministic domain and timing behavior | Start Groq or claim human validity from fixtures |
 
 Control and answer precedence is:
 
@@ -75,7 +75,7 @@ The baseline supports seven actions:
 
 Every turn returns explicit signals; input type; answer relevance; project, evaluation-method, and evaluation-result evidence; the selected action and reason; updated session state; reply; `reply_source`; and optional `fallback_reason`. `SessionState` contains counters and control state only; it does not retain candidate text.
 
-The evidence extractor uses documented, precompiled lexical patterns rather than claiming general language understanding. It identifies concrete project descriptions, evaluation terminology, numeric results, and explicit controls. Irrelevant or unclear answers receive `request_clarification`. `wait`, `end_session`, and `request_input` are always rendered locally. `offer_hint`, `ask_followup`, `continue_interview`, and `request_clarification` are eligible for optional Gemini wording.
+The evidence extractor uses documented, precompiled lexical patterns rather than claiming general language understanding. It identifies concrete project descriptions, evaluation terminology, numeric results, and explicit controls. Irrelevant or unclear answers receive `request_clarification`. `wait`, `end_session`, and `request_input` are always rendered locally. `offer_hint`, `ask_followup`, `continue_interview`, and `request_clarification` are eligible for optional Groq wording.
 
 ## Quickstart
 
@@ -123,19 +123,21 @@ $env:WHISPER_MAX_AUDIO_SECONDS = "60"
 
 The first transcription downloads model weights from Hugging Face and loads them lazily. Later requests use the local cache. Model weights may persist in the Hugging Face cache; candidate audio does not. The project reads process environment variables and does not silently load `.env`.
 
-### Optional Gemini replies
+### Optional Groq replies
 
-The project uses the official `google-genai` SDK and defaults to the current stable low-latency model `gemini-3.8-flash`. Copy `.env.example` as a reference, then set variables in the process environment; the project does not silently load `.env` files.
+The project uses the official `groq` Python SDK and defaults to the production `openai/gpt-oss-20b` model for low-latency wording with strict JSON Schema output. `openai/gpt-oss-120b` is the supported higher-capacity alternative. Copy `.env.example` as a reference, then set variables in the process environment; the project does not silently load `.env` files.
 
 ```powershell
-$env:GEMINI_API_KEY = "your-key"
-$env:GEMINI_MODEL = "gemini-3.8-flash"
-$env:GEMINI_TIMEOUT_SECONDS = "8"
+$env:GROQ_API_KEY = "your-new-key"
+$env:GROQ_MODEL = "openai/gpt-oss-20b"
+$env:GROQ_TIMEOUT_SECONDS = "8"
 ```
 
-The FastAPI composition root reads these variables when the server starts and constructs `InterviewService` once. No key keeps the API in local response mode.
+The FastAPI composition root reads these variables when the server starts and constructs `InterviewService` once. No key keeps the API in local response mode. Store keys only in the process environment or an ignored local secret file; never commit or paste a real key into issues, chat, screenshots, or logs. Revoke any key that has been exposed.
 
-An absent or blank key keeps local mode. Invalid timeout configuration fails at construction only when a key is present. Timeout, SDK error, malformed structured output, or invalid reply uses the exact local response and returns `reply_source="local_fallback"` with a machine-readable reason. There are no application-level retries.
+The application intentionally does not route requests across every Groq model. One production model per request keeps behavior, latency, cost, and evaluation reproducible. Only the two GPT-OSS models above are accepted because Groq documents strict structured-output support for them. Faster-Whisper and MediaPipe remain local rather than being replaced with hosted audio or vision models, preserving the modular, privacy-first architecture.
+
+An absent or blank key keeps local mode. Invalid timeout or model configuration fails at construction only when a key is present. Timeout, SDK error, malformed structured output, or invalid reply uses the exact local response and returns `reply_source="local_fallback"` with a machine-readable reason. The SDK is configured with retries disabled.
 
 Run backend commands from the repository root and npm commands from `frontend/`.
 
@@ -161,7 +163,7 @@ curl -X POST http://127.0.0.1:8000/v1/interview/turn \
   }'
 ```
 
-The response includes observable evidence, the local policy decision, updated state, reply, `reply_source`, and optional `fallback_reason`. Schema errors return HTTP `422`. Gemini failures still return HTTP `200` with the exact local reply and `reply_source=\"local_fallback\"`.
+The response includes observable evidence, the local policy decision, updated state, reply, `reply_source`, and optional `fallback_reason`. Schema errors return HTTP `422`. Groq failures still return HTTP `200` with the exact local reply and `reply_source=\"local_fallback\"`.
 
 Browser access is restricted to the local Vite origins `http://localhost:5173` and `http://127.0.0.1:5173`.
 
@@ -171,7 +173,7 @@ The React client keeps session state and conversation history in memory only. It
 
 - a text interview flow across multiple turns;
 - an evidence and deterministic policy decision monitor;
-- visible `local`, `gemini`, and `local_fallback` reply sources;
+- visible `local`, `groq`, and `local_fallback` reply sources;
 - explicit voice recording that appends a local transcript to the editable answer;
 - opt-in browser-only face landmarks with face count, inference latency, and the three strongest raw blendshape coefficients;
 - a reset action that stops active sensors, discards the in-memory transcript, and creates a new session;
@@ -199,7 +201,7 @@ The backend serializes model inference to avoid concurrent CPU and memory spikes
 
 **Enable camera** requests browser camera permission and starts MediaPipe Face Landmarker in `VIDEO` mode at no more than five inferences per second. The application reports only directly observable outputs: model availability, face count, inference latency, and up to three raw blendshape coefficients when exactly one face is visible. Coefficients are suppressed for multiple faces to avoid ambiguous attribution.
 
-All frame processing occurs in the browser. Frames, landmarks, and coefficients are not sent to FastAPI, Gemini, storage, or application logs. **Stop camera**, **Reset session**, and component unmount stop every camera track and close the Face Landmarker runtime. Camera denial, missing hardware, model-loading failure, or inference failure leaves text and audio available.
+All frame processing occurs in the browser. Frames, landmarks, and coefficients are not sent to FastAPI, Groq, storage, or application logs. **Stop camera**, **Reset session**, and component unmount stop every camera track and close the Face Landmarker runtime. Camera denial, missing hardware, model-loading failure, or inference failure leaves text and audio available.
 
 This baseline deliberately does not map facial movement to mood, stress, focus, honesty, competence, or hiring suitability. Visual observations are displayed for system transparency but do not change the dialogue policy. A separate held-out vision benchmark is required before testing any multimodal policy rule.
 
@@ -334,7 +336,7 @@ Three clean English public fixtures are integration evidence only. They do not e
 ## Privacy and scientific boundaries
 
 - Candidate text is processed in memory and is not stored in `SessionState` or default logs.
-- Gemini receives candidate text only when an API key is configured, the generator is explicitly injected, and the selected action is eligible. Review Google's data handling terms before using real interview content.
+- Groq receives candidate text only when an API key is configured and the selected action is eligible. Review Groq's data handling terms before using real interview content.
 - Logs contain reply source and fallback reason only, not candidate text, prompts, response bodies, API keys, audio, or exception messages.
 - Voice-activity samples remain in browser memory and are never recorded by the timing path.
 - Voice-answer recording requires a separate explicit click. The clip is sent only to local FastAPI, bounded by size and decoded duration, processed in memory, and not persisted.
@@ -343,4 +345,4 @@ Three clean English public fixtures are integration evidence only. They do not e
 - Text heuristics, audio energy, transcripts, and facial blendshapes do **not** measure stress, focus, mood, honesty, personality, competence, or hiring suitability.
 - Camera use is opt-in. Frames remain in browser memory, are never uploaded or persisted, and have no effect on dialogue policy; model acquisition still requires a network request to Google's versioned model asset.
 
-Gemini generates wording only. Local policy retains ownership of `action`, `reason`, `followup_topic`, and all state transitions; control actions remain local even when Gemini is configured.
+Groq generates wording only. Local policy retains ownership of `action`, `reason`, `followup_topic`, and all state transitions; control actions remain local even when Groq is configured.
