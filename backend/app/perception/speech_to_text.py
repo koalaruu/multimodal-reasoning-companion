@@ -10,6 +10,16 @@ from time import perf_counter
 from typing import Any, BinaryIO, Protocol, Self
 
 _SAMPLE_RATE = 16_000
+_SUPPORTED_LANGUAGES = frozenset({"en", "id"})
+
+
+def _normalize_language(language: str | None) -> str | None:
+    normalized = language.strip().lower() if language else ""
+    if normalized in {"", "auto"}:
+        return None
+    if normalized not in _SUPPORTED_LANGUAGES:
+        raise ValueError("language must be auto, en, or id")
+    return normalized
 
 
 class TranscriptionError(RuntimeError):
@@ -53,15 +63,16 @@ class FasterWhisperTranscriber:
     def __init__(
         self,
         *,
-        model_name: str = "base.en",
+        model_name: str = "base",
         device: str = "cpu",
         compute_type: str = "int8",
-        language: str | None = "en",
+        language: str | None = None,
         max_audio_seconds: float = 60.0,
         model_factory: Callable[..., Any] | None = None,
         audio_decoder: Callable[..., Any] | None = None,
     ) -> None:
-        if not model_name.strip():
+        normalized_model = model_name.strip()
+        if not normalized_model:
             raise ValueError("model_name must not be blank")
         if not device.strip():
             raise ValueError("device must not be blank")
@@ -73,11 +84,16 @@ class FasterWhisperTranscriber:
             raise ValueError(
                 "model_factory and audio_decoder must be supplied together"
             )
+        normalized_language = _normalize_language(language)
+        if normalized_model.endswith(".en") and normalized_language != "en":
+            raise ValueError(
+                "English-only Whisper models require language=en"
+            )
 
-        self._model_name = model_name.strip()
+        self._model_name = normalized_model
         self._device = device.strip()
         self._compute_type = compute_type.strip()
-        self._language = language.strip() if language and language.strip() else None
+        self._language = normalized_language
         self._max_audio_seconds = max_audio_seconds
         self._model_factory = model_factory
         self._audio_decoder = audio_decoder
@@ -97,10 +113,10 @@ class FasterWhisperTranscriber:
             ) from error
 
         return cls(
-            model_name=source.get("WHISPER_MODEL", "base.en"),
+            model_name=source.get("WHISPER_MODEL", "base"),
             device=source.get("WHISPER_DEVICE", "cpu"),
             compute_type=source.get("WHISPER_COMPUTE_TYPE", "int8"),
-            language=source.get("WHISPER_LANGUAGE", "en"),
+            language=source.get("WHISPER_LANGUAGE", "auto"),
             max_audio_seconds=max_audio_seconds,
         )
 

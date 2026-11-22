@@ -111,15 +111,17 @@ Camera perception is optional. The browser downloads the versioned Face Landmark
 
 ### Local speech-to-text
 
-`backend/requirements-stt.txt` installs Faster-Whisper 1.2.1 and pins PyAV below 19 because that Faster-Whisper release still calls the pre-19 `av.open` API. Defaults are CPU `int8`, English `base.en`, and a 60-second decoded-audio limit:
+`backend/requirements-stt.txt` installs Faster-Whisper 1.2.1 and pins PyAV below 19 because that Faster-Whisper release still calls the pre-19 `av.open` API. Defaults are CPU `int8`, the multilingual `base` model, automatic English/Indonesian language detection, and a 60-second decoded-audio limit:
 
 ```powershell
-$env:WHISPER_MODEL = "base.en"
+$env:WHISPER_MODEL = "base"
 $env:WHISPER_DEVICE = "cpu"
 $env:WHISPER_COMPUTE_TYPE = "int8"
-$env:WHISPER_LANGUAGE = "en"
+$env:WHISPER_LANGUAGE = "auto"
 $env:WHISPER_MAX_AUDIO_SECONDS = "60"
 ```
+
+`WHISPER_LANGUAGE=auto` lets the multilingual model detect each clip. Set it to `en` or `id` to pin English or Indonesian when short or noisy recordings are misdetected. English-only models such as `base.en` are accepted only with `WHISPER_LANGUAGE=en`.
 
 The first transcription downloads model weights from Hugging Face and loads them lazily. Later requests use the local cache. Model weights may persist in the Hugging Face cache; candidate audio does not. The project reads process environment variables and does not silently load `.env`.
 
@@ -190,12 +192,14 @@ The readiness policy distinguishes `speaking`, `listening`, `thinking_pause`, an
 Speech-to-text is a separate, explicit path:
 
 1. **Start voice answer** starts `MediaRecorder` on the already-consented microphone stream.
-2. **Stop and transcribe** sends the clip only to `127.0.0.1` FastAPI.
+2. **Stop and transcribe** sends the completed clip only to `127.0.0.1` FastAPI.
 3. FastAPI accepts WebM, Ogg, MP4, FLAC, or WAV; rejects bodies above 10 MiB; and keeps accepted bytes in an in-memory stream.
-4. Faster-Whisper decodes the clip, rejects decoded audio above 60 seconds, and transcribes with CPU `int8` by default.
-5. The transcript is appended to **Your answer** for review and editing. Only **Send answer** starts an interview turn.
+4. Faster-Whisper decodes the clip, rejects decoded audio above 60 seconds, automatically detects English or Indonesian, and transcribes with CPU `int8` by default.
+5. The transcript and detected language are shown locally; the transcript is appended to **Your answer** for review and editing. Only **Send answer** starts an interview turn.
 
 The backend serializes model inference to avoid concurrent CPU and memory spikes. Errors such as unsupported media, silence, missing runtime, or model failure are returned as safe status messages; text input remains available.
+
+This endpoint is clip-based rather than streaming: no audio is uploaded until recording stops. Near-real-time partial transcripts would require a separate WebSocket/chunking protocol, incremental decoding, cancellation, and backpressure; it is not simulated by repeatedly calling the batch endpoint.
 
 ## Local visual perception
 
@@ -331,7 +335,7 @@ The target was fixed before the first held-out run: 100% held-out success, corpu
 
 Target status: **PASS**. The runner writes `eval/results/stt-latest.json` with hypotheses, per-case metrics, runtime metadata, and safe failure categories.
 
-Three clean English public fixtures are integration evidence only. They do not establish performance on interview answers, microphones, accents, background noise, multilingual speech, or unseen datasets. A larger consented speaker-disjoint corpus is required before publishing portfolio accuracy claims.
+Three clean English public fixtures are integration evidence only. They do not establish performance on interview answers, microphones, accents, background noise, Indonesian speech, automatic language detection, or unseen datasets. The benchmark intentionally keeps its pinned `base.en` English baseline separate from the bilingual production default. A larger consented, speaker-disjoint English/Indonesian corpus is required before publishing bilingual accuracy claims.
 
 ### Local vision benchmark
 
