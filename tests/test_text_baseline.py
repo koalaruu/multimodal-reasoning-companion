@@ -247,6 +247,88 @@ def test_candidate_alone_can_end_the_session(service: InterviewService) -> None:
     assert result.updated_state.status.value == "ended"
 
 
+class TestVisualLoadChangesDecision:
+    ANSWER = "I built a ticket classifier for support queues."
+
+    def _state(self, emotion: str, confidence: float, **kw) -> SessionState:
+        from backend.app.schemas import EmotionalState, EmotionLabel
+        return SessionState(
+            session_id="load",
+            emotional_state=EmotionalState(
+                face_available=True,
+                dominant_emotion=EmotionLabel(emotion),
+                confidence=confidence,
+            ),
+            **kw,
+        )
+
+    def test_high_load_emotion_yields_space_instead_of_followup(
+        self, service: InterviewService
+    ) -> None:
+        result = service.process_turn(
+            self._state("fearful", 0.6), self.ANSWER
+        )
+
+        assert result.decision.action == DialogueAction.GIVE_SPACE
+        assert result.decision.reason == DecisionReason.VISUAL_LOAD_HIGH
+        assert "No rush" in result.reply
+
+    def test_low_confidence_emotion_does_not_change_decision(
+        self, service: InterviewService
+    ) -> None:
+        result = service.process_turn(
+            self._state("fearful", 0.2), self.ANSWER
+        )
+
+        assert result.decision.action == DialogueAction.ASK_FOLLOWUP
+
+    def test_neutral_face_does_not_change_decision(
+        self, service: InterviewService
+    ) -> None:
+        result = service.process_turn(self._state("neutral", 0.9), self.ANSWER)
+
+        assert result.decision.action == DialogueAction.ASK_FOLLOWUP
+
+    def test_no_face_does_not_change_decision(
+        self, service: InterviewService
+    ) -> None:
+        from backend.app.schemas import EmotionalState
+
+        state = SessionState(
+            session_id="no-face",
+            emotional_state=EmotionalState(face_available=False),
+        )
+        result = service.process_turn(state, self.ANSWER)
+
+        assert result.decision.action == DialogueAction.ASK_FOLLOWUP
+
+    def test_explicit_hint_request_beats_visual_load(
+        self, service: InterviewService
+    ) -> None:
+        result = service.process_turn(
+            self._state("fearful", 0.9), "Could I have a hint?"
+        )
+
+        assert result.decision.action == DialogueAction.OFFER_HINT
+
+    def test_give_space_is_capped(
+        self, service: InterviewService
+    ) -> None:
+        state = self._state("fearful", 0.6, give_space_offered=1)
+        result = service.process_turn(state, self.ANSWER)
+
+        assert result.decision.action == DialogueAction.ASK_FOLLOWUP
+
+    def test_counter_increments_when_space_given(
+        self, service: InterviewService
+    ) -> None:
+        result = service.process_turn(
+            self._state("angry", 0.7), self.ANSWER
+        )
+
+        assert result.updated_state.give_space_offered == 1
+
+
 def test_paraphrased_complete_answer_extracts_all_required_evidence(
     service: InterviewService,
 ) -> None:

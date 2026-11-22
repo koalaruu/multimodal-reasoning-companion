@@ -45,6 +45,8 @@ def apply_decision(state: SessionState, decision: ActionDecision) -> SessionStat
                 else state.clarifications_asked
                 + int(decision.action == DialogueAction.REQUEST_CLARIFICATION)
             ),
+            "give_space_offered": state.give_space_offered
+            + int(decision.action == DialogueAction.GIVE_SPACE),
             "last_action": decision.action,
         }
     )

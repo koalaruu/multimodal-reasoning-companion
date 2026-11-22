@@ -23,6 +23,7 @@ class DialogueAction(str, Enum):
     REQUEST_CLARIFICATION = "request_clarification"
     ANSWER_META_QUESTION = "answer_meta_question"
     CONVERSE = "converse"
+    GIVE_SPACE = "give_space"
 
 
 
@@ -56,6 +57,7 @@ class DecisionReason(str, Enum):
     TOPIC_ADVANCED_WITHOUT_DETAIL = "topic_advanced_without_detail"
     MINIMAL_ANSWER_NEEDS_CHOICE = "minimal_answer_needs_choice"
     META_QUESTION_ANSWERED = "meta_question_answered"
+    VISUAL_LOAD_HIGH = "visual_load_high"
     GROQ_LED_TURN = "groq_led_turn"
     CLASS_LEVEL_PERFORMANCE_MISSING = "class_level_performance_missing"
     EVALUATION_EVIDENCE_MISSING = "evaluation_evidence_missing"
@@ -180,6 +182,7 @@ class SessionState(DomainModel):
     followups_asked: int = Field(default=0, ge=0)
     last_action: DialogueAction | None = None
     clarifications_asked: int = Field(default=0, ge=0)
+    give_space_offered: int = Field(default=0, ge=0)
     recent_replies: list[str] = Field(default_factory=list)
     conversation: list[dict[str, str]] = Field(default_factory=list)
     cv_text: str | None = None

@@ -33,6 +33,9 @@ _REPLIES = {
     (DialogueAction.CONTINUE_INTERVIEW, FollowupTopic.NONE): (
         "Thank you. That covers the project and its evaluation."
     ),
+    (DialogueAction.GIVE_SPACE, FollowupTopic.NONE): (
+        "No rush. Take the time you need, and continue when you're ready."
+    ),
     (DialogueAction.ANSWER_META_QUESTION, FollowupTopic.NONE): (
         "This is a structured interview drill, not an open chat. I ask about an "
         "AI project you built and how you evaluated it, and I follow up until "

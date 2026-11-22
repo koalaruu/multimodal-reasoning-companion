@@ -22,6 +22,14 @@ _MAX_CLARIFICATIONS = 2
 # After this many hints the policy stops hinting and moves the interview on.
 _MAX_HINTS = 2
 
+# Facial evidence of sustained high arousal (angry/fearful/disgusted) means the
+# candidate is under load. Pressing another question adds pressure, so the
+# policy gives space instead. This is advisory: a low-confidence or neutral
+# reading never changes the action.
+_HIGH_LOAD_EMOTIONS = frozenset({"angry", "fearful", "disgusted"})
+_HIGH_LOAD_MIN_CONFIDENCE = 0.35
+_MAX_GIVE_SPACE = 1
+
 
 def decide(
     state: SessionState,
@@ -61,6 +69,13 @@ def decide(
             reason=DecisionReason.INPUT_MISSING,
         )
     decision = _content_decision(state, evidence)
+    if _visual_load_is_high(state) and _should_yield_to_load(
+        state, decision, evidence
+    ):
+        return ActionDecision(
+            action=DialogueAction.GIVE_SPACE,
+            reason=DecisionReason.VISUAL_LOAD_HIGH,
+        )
     if evidence.minimal_answer:
         if state.hints_offered >= _MAX_HINTS:
             return ActionDecision(
@@ -90,6 +105,39 @@ def decide(
                 reason=DecisionReason.CLARIFICATION_LIMIT_REACHED,
             )
     return decision
+
+
+def _visual_load_is_high(state: SessionState) -> bool:
+    """True only for a confident high-arousal reading with a visible face."""
+
+    emotional = state.emotional_state
+    if emotional is None or not emotional.face_available:
+        return False
+    if emotional.dominant_emotion.value not in _HIGH_LOAD_EMOTIONS:
+        return False
+    return emotional.confidence >= _HIGH_LOAD_MIN_CONFIDENCE
+
+
+def _should_yield_to_load(
+    state: SessionState,
+    decision: ActionDecision,
+    evidence: ContentEvidence,
+) -> bool:
+    """Give space only when the alternative would add pressure.
+
+    Explicit requests still win: a candidate who asks for a hint wants help,
+    not silence. The yield is also capped so it cannot replace the interview.
+    """
+
+    if state.give_space_offered >= _MAX_GIVE_SPACE:
+        return False
+    if evidence.input_type != InputType.ANSWER:
+        return False
+    return decision.action in {
+        DialogueAction.REQUEST_CLARIFICATION,
+        DialogueAction.ASK_FOLLOWUP,
+        DialogueAction.CONTINUE_INTERVIEW,
+    }
 
 
 def _content_decision(

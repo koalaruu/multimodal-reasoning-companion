@@ -41,6 +41,7 @@ _DETERMINISTIC_ACTIONS = frozenset(
         DialogueAction.WAIT,
         DialogueAction.ANSWER_META_QUESTION,
         DialogueAction.REQUEST_INPUT,
+        DialogueAction.GIVE_SPACE,
     }
 )
 
@@ -66,15 +67,19 @@ class InterviewService:
         cumulative_evidence = merge_evidence(
             state.cumulative_evidence, turn_evidence
         )
-        decision = decide(state, signals, cumulative_evidence)
-        updated_state = apply_decision(state, decision)
+
+        # The current observation must be on the state before the policy runs,
+        # otherwise the policy always sees the previous turn's face reading.
+        evaluated_state = (
+            update_emotional_state(state, emotional_state)
+            if emotional_state is not None
+            else state
+        )
+        decision = decide(evaluated_state, signals, cumulative_evidence)
+        updated_state = apply_decision(evaluated_state, decision)
         updated_state = updated_state.model_copy(
             update={"cumulative_evidence": cumulative_evidence}
         )
-        if emotional_state is not None:
-            updated_state = update_emotional_state(
-                updated_state, emotional_state
-            )
 
         reply, source, fallback_reason = self._render(
             state=updated_state,
@@ -84,7 +89,9 @@ class InterviewService:
 
         # Report who actually drove the turn. On fallback the reply text came
         # from the deterministic decision, so that decision stays truthful.
-        if source == ReplySource.GROQ:
+        if source == ReplySource.GROQ and decision.action not in {
+            DialogueAction.GIVE_SPACE,
+        }:
             decision = ActionDecision(
                 action=DialogueAction.CONVERSE,
                 reason=DecisionReason.GROQ_LED_TURN,

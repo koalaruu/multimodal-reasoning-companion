@@ -233,7 +233,15 @@ Blendshape coefficients are sent to the local FastAPI backend once per second fo
 
 All frame processing occurs in the browser. Frames are not sent to FastAPI, Groq, storage, or application logs. Blendshape coefficients are sent only to the local backend and are not persisted. **Stop camera**, **Reset session**, and component unmount stop every camera track and close the Face Landmarker runtime. Camera denial, missing hardware, model-loading failure, or inference failure leaves text and audio available.
 
-The emotional state is attached to `SessionState` and provided to the Groq LLM as advisory context with an explicit note that it is not a validated mental-state measurement. The LLM is instructed to adjust tone subtly if appropriate but never to state that the candidate is stressed, confused, or emotional. The dialogue policy remains deterministic; emotional state does not change the action selected.
+The emotional state is attached to `SessionState`, read by the deterministic dialogue policy, and provided to the Groq LLM as advisory context.
+
+**The policy now acts on one facial signal.** When the reading is a confident high-arousal emotion (`angry`, `fearful`, `disgusted` with confidence >= 0.35) and the alternative would add pressure, the policy returns `give_space` instead of another question. Constraints:
+
+- explicit requests always win — a hint request still gets a hint;
+- it fires at most once per session (`give_space_offered`);
+- neutral, happy, low-confidence, and no-face readings never change the action.
+
+Everything else stays advisory to the LLM as an explicit non-measurement note. The LLM is instructed to adjust tone subtly if appropriate but never to state that the candidate is stressed, confused, or emotional. The dialogue policy remains deterministic; emotional state does not change the action selected.
 
 ### Interview conversation and CV context
 
