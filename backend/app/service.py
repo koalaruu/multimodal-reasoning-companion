@@ -35,6 +35,7 @@ class InterviewService:
                 decision=decision,
                 candidate_input=candidate_input,
                 local_reply=local_reply,
+                emotional_state=state.emotional_state,
             )
             if self._reply_generator is not None
             else ReplyGenerationResult(

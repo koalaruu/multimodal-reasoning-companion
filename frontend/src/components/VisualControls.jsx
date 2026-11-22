@@ -14,6 +14,7 @@ function formatInference(milliseconds) {
 
 export default function VisualControls({
   observation,
+  emotionalState,
   videoRef,
   onEnable,
   onDisable,
@@ -83,9 +84,9 @@ export default function VisualControls({
 
           <div className="blendshape-summary">
             <h3>Strongest raw coefficients</h3>
-            {observation.blendshapes.length > 0 ? (
+            {observation.top_blendshapes?.length > 0 ? (
               <ul>
-                {observation.blendshapes.map((blendshape) => (
+                {observation.top_blendshapes.map((blendshape) => (
                   <li key={blendshape.name}>
                     <span>{blendshape.name}</span>
                     <strong>{blendshape.score.toFixed(3)}</strong>
@@ -96,6 +97,40 @@ export default function VisualControls({
               <p>Available after exactly one face is detected.</p>
             )}
           </div>
+
+          {emotionalState && emotionalState.face_available && (
+            <div className="emotion-readout">
+              <h3>Proxy emotional state</h3>
+              <div className="emotion-dominant">
+                <span className="emotion-label">
+                  {emotionalState.dominant_emotion}
+                </span>
+                <small>
+                  confidence {(emotionalState.confidence * 100).toFixed(0)}%
+                </small>
+              </div>
+              {Object.entries(emotionalState.emotion_scores)
+                .filter(([, v]) => v > 0)
+                .sort(([, a], [, b]) => b - a)
+                .slice(0, 4)
+                .map(([emotion, score]) => (
+                  <div key={emotion} className="emotion-bar-row">
+                    <span>{emotion}</span>
+                    <div className="emotion-bar">
+                      <div
+                        className="emotion-bar-fill"
+                        style={{ width: `${Math.round(score * 100)}%` }}
+                      />
+                    </div>
+                    <small>{(score * 100).toFixed(0)}%</small>
+                  </div>
+                ))}
+              <p className="emotion-disclaimer">
+                FACS AU proxy mapping (Ekman &amp; Friesen, 1978).
+                Not a direct measure of mental state.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -105,8 +140,8 @@ export default function VisualControls({
         </p>
       )}
       <p className="observation-note">
-        Video frames are neither uploaded nor persisted. The versioned model is
-        downloaded from Google on first use; the MediaPipe runtime is bundled.
+        Video frames are not uploaded. Blendshape coefficients are sent to the
+        local backend for FACS proxy mapping; the MediaPipe runtime is bundled.
       </p>
     </section>
   );

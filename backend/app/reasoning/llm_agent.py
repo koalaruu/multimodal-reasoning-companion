@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from backend.app.schemas import (
     ActionDecision,
     DialogueAction,
+    EmotionalState,
     ReplyFallbackReason,
     ReplySource,
 )
@@ -53,7 +54,9 @@ Rules:
 - For ask_followup: ask one focused follow-up question related to followup_topic.
 - For continue_interview: acknowledge briefly and continue naturally.
 - For request_clarification: ask for a relevant project-and-evaluation answer without judging the candidate.
-- Do not include Markdown code fences.
+- If emotional_state is provided, treat it as advisory context only. Do not
+  state that the candidate is stressed, confused, or emotional. Adjust tone
+  subtly if appropriate, but never mention the emotional_state field.
 """
 
 logger = logging.getLogger(__name__)
@@ -129,19 +132,29 @@ class GroqReplyGenerator:
         decision: ActionDecision,
         candidate_input: str,
         local_reply: str,
+        emotional_state: EmotionalState | None = None,
     ) -> ReplyGenerationResult:
         if decision.action not in _GROQ_ACTIONS or self._client is None:
             return self._result(local_reply, ReplySource.LOCAL)
 
-        policy_context = json.dumps(
-            {
-                "action": decision.action.value,
-                "reason": decision.reason.value,
-                "followup_topic": decision.followup_topic.value,
-                "candidate_input": candidate_input,
-            },
-            ensure_ascii=False,
-        )
+        context: dict[str, object] = {
+            "action": decision.action.value,
+            "reason": decision.reason.value,
+            "followup_topic": decision.followup_topic.value,
+            "candidate_input": candidate_input,
+        }
+        if emotional_state is not None and emotional_state.face_available:
+            context["emotional_state"] = {
+                "dominant_emotion": emotional_state.dominant_emotion.value,
+                "confidence": emotional_state.confidence,
+                "activated_aus": emotional_state.activated_aus,
+                "note": (
+                    "FACS AU proxy evidence, not a validated mental-state "
+                    "measurement. Use as advisory context only."
+                ),
+            }
+        policy_context = json.dumps(context, ensure_ascii=False)
+
         response_format = {
             "type": "json_schema",
             "json_schema": {

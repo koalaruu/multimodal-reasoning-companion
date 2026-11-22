@@ -140,6 +140,7 @@ export default function App() {
       />
       <VisualControls
         observation={vision.observation}
+        emotionalState={vision.emotionalState}
         videoRef={vision.videoRef}
         onEnable={vision.enableCamera}
         onDisable={vision.disableCamera}

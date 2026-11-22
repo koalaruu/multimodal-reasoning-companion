@@ -15,6 +15,7 @@ test("disabled vision never claims that a face was observed", () => {
     inference_ms: null,
     observed_at_ms: null,
     blendshapes: [],
+    top_blendshapes: [],
     error: null,
   });
 });
@@ -47,7 +48,7 @@ test("an empty MediaPipe result reports no face", () => {
   assert.equal(observation.observed_at_ms, 1_000);
 });
 
-test("one face exposes only the three strongest finite raw coefficients", () => {
+test("one face exposes the strongest finite raw coefficients", () => {
   const observation = summarizeFaceLandmarkerResult({
     faceLandmarks: [[{ x: 0.5, y: 0.5, z: 0 }]],
     faceBlendshapes: [
@@ -65,10 +66,11 @@ test("one face exposes only the three strongest finite raw coefficients", () => 
   });
 
   assert.equal(observation.cue, "face_detected");
-  assert.deepEqual(observation.blendshapes, [
+  assert.deepEqual(observation.top_blendshapes, [
     { name: "eyeBlinkLeft", score: 0.91 },
     { name: "mouthSmileLeft", score: 0.8 },
     { name: "browDownLeft", score: 0.7 },
+    { name: "jawOpen", score: 0.45 },
   ]);
 });
 

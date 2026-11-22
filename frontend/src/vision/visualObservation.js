@@ -1,4 +1,4 @@
-const MAX_VISIBLE_BLENDSHAPES = 3;
+const MAX_VISIBLE_BLENDSHAPES = 5;
 
 export function unavailableVisualObservation(permission = "idle", error = null) {
   return {
@@ -9,6 +9,7 @@ export function unavailableVisualObservation(permission = "idle", error = null) 
     inference_ms: null,
     observed_at_ms: null,
     blendshapes: [],
+    top_blendshapes: [],
     error,
   };
 }
@@ -27,10 +28,8 @@ function roundedMilliseconds(value) {
 }
 
 function strongestBlendshapes(result, faceCount) {
-  if (faceCount !== 1) return [];
-
   const categories = result?.faceBlendshapes?.[0]?.categories;
-  if (!Array.isArray(categories)) return [];
+  if (!Array.isArray(categories) || faceCount !== 1) return [];
 
   return categories
     .filter(
@@ -41,6 +40,23 @@ function strongestBlendshapes(result, faceCount) {
     )
     .sort((left, right) => right.score - left.score)
     .slice(0, MAX_VISIBLE_BLENDSHAPES)
+    .map((category) => ({
+      name: category.categoryName,
+      score: Math.round(category.score * 1_000) / 1_000,
+    }));
+}
+
+function allBlendshapes(result, faceCount) {
+  const categories = result?.faceBlendshapes?.[0]?.categories;
+  if (!Array.isArray(categories) || faceCount !== 1) return [];
+
+  return categories
+    .filter(
+      (category) =>
+        typeof category?.categoryName === "string" &&
+        !category.categoryName.startsWith("_") &&
+        Number.isFinite(category.score),
+    )
     .map((category) => ({
       name: category.categoryName,
       score: Math.round(category.score * 1_000) / 1_000,
@@ -67,7 +83,8 @@ export function summarizeFaceLandmarkerResult(
     face_count: faceCount,
     inference_ms: roundedMilliseconds(inferenceMs),
     observed_at_ms: Number.isFinite(observedAtMs) ? observedAtMs : null,
-    blendshapes: strongestBlendshapes(result, faceCount),
+    blendshapes: allBlendshapes(result, faceCount),
+    top_blendshapes: strongestBlendshapes(result, faceCount),
     error: null,
   };
 }
