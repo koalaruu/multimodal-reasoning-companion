@@ -17,6 +17,15 @@ class InterviewTurnRequest(DomainModel):
     candidate_input: str
     state: SessionState
     emotional_state: EmotionalState | None = None
+    cv_text: str | None = None
+    target_role: str | None = None
+
+
+class CvUploadResponse(DomainModel):
+    filename: str
+    characters: int = Field(ge=0)
+    text: str = Field(min_length=1)
+    preview: str = Field(max_length=400)
 
 
 class TranscriptionResponse(DomainModel):

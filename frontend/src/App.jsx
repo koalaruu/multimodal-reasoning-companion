@@ -5,6 +5,7 @@ import useVisualPerception from "./vision/useVisualPerception.js";
 import AudioControls from "./components/AudioControls.jsx";
 import ChatBox from "./components/ChatBox.jsx";
 import DecisionMonitor from "./components/DecisionMonitor.jsx";
+import CvUpload from "./components/CvUpload.jsx";
 import VisualControls from "./components/VisualControls.jsx";
 import { submitInterviewTurn } from "./services/interviewApi.js";
 
@@ -33,6 +34,8 @@ export default function App() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [cv, setCv] = useState(null);
+  const [targetRole, setTargetRole] = useState("");
   const audio = useAudioActivity();
   const voice = useVoiceTranscription({
     getStream: audio.getStream,
@@ -63,6 +66,8 @@ export default function App() {
         candidateInput: answer,
         state: session,
         emotionalState: vision.emotionalState,
+        cvText: cv?.text,
+        targetRole: targetRole.trim(),
       });
       setSession(result.updated_state);
       setLatestResult(result);
@@ -139,6 +144,12 @@ export default function App() {
         voiceResult={voice.result}
         voiceStatus={voice.status}
       />
+      <CvUpload
+        cv={cv}
+        targetRole={targetRole}
+        onCvLoaded={setCv}
+        onTargetRoleChange={setTargetRole}
+      />
       <VisualControls
         observation={vision.observation}
         emotionalState={vision.emotionalState}
@@ -166,8 +177,9 @@ export default function App() {
       </div>
 
       <footer>
-        Dialogue policy, voice activity, transcription, and visual perception
-        stay local. Groq may rewrite eligible replies only.
+        Groq drives the interview conversation using your CV, the dialogue so
+        far, and advisory facial-expression signals. Ending the session stays
+        under your control, and your CV text is never stored on the server.
       </footer>
     </main>
   );

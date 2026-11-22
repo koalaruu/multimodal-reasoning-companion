@@ -5,16 +5,18 @@ from __future__ import annotations
 from io import BytesIO
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from starlette.concurrency import run_in_threadpool
 
 from backend.app.api.schemas import (
+    CvUploadResponse,
     HealthResponse,
     InterviewTurnRequest,
     TranscriptionResponse,
     VisionAnalyzeRequest,
     VisionAnalyzeResponse,
 )
+from backend.app.perception.cv_reader import CvExtractionError, extract_cv
 from backend.app.perception.speech_to_text import (
     AudioTooLongError,
     AudioTranscriber,
@@ -162,10 +164,50 @@ def process_interview_turn(
     request_body: InterviewTurnRequest,
     service: Annotated[InterviewService, Depends(get_interview_service)],
 ) -> TurnResult:
+    state = request_body.state
+    updates: dict[str, object] = {}
+    if request_body.cv_text:
+        updates["cv_text"] = request_body.cv_text
+    if request_body.target_role:
+        updates["target_role"] = request_body.target_role
+    if updates:
+        state = state.model_copy(update=updates)
+
     return service.process_turn(
-        state=request_body.state,
+        state=state,
         candidate_input=request_body.candidate_input,
         emotional_state=request_body.emotional_state,
+    )
+
+
+@router.post(
+    "/v1/cv/extract",
+    response_model=CvUploadResponse,
+    tags=["cv"],
+)
+async def extract_cv_endpoint(
+    file: Annotated[UploadFile, File()],
+) -> CvUploadResponse:
+    """Extract plain text from an uploaded CV or job summary.
+
+    The text is returned to the browser, which stores it in the session and
+    sends it with later turns. Nothing is persisted on the server.
+    """
+    data = await file.read()
+    try:
+        document = extract_cv(file.filename or "cv", data)
+    except CvExtractionError as error:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "cv_extraction_failed", "message": str(error)},
+        ) from error
+
+    preview = document.text[:300].replace("\n", " ")
+    return CvUploadResponse(
+        filename=document.filename,
+        characters=document.characters,
+        text=document.text,
+        preview=preview,
     )
 
 

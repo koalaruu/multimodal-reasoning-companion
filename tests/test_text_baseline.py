@@ -334,16 +334,22 @@ def test_whitespace_requests_input(service: InterviewService) -> None:
     assert result.decision.reason == DecisionReason.INPUT_MISSING
 
 
-def test_state_does_not_store_candidate_input(service: InterviewService) -> None:
+def test_state_stores_conversation_but_not_a_separate_input_field(
+    service: InterviewService,
+) -> None:
     sensitive_input = "My private project description"
 
     result = service.process_turn(
         SessionState(session_id="privacy"), sensitive_input
     )
-    serialized_state = json.dumps(result.updated_state.model_dump(mode="json"))
 
+    # The conversation is required for contextual follow-ups, but there must be
+    # no separate candidate_input field duplicating it, and the state must
+    # round-trip as plain JSON the browser owns.
     assert "candidate_input" not in type(result.updated_state).model_fields
-    assert sensitive_input not in serialized_state
+    assert result.updated_state.conversation[-2]["role"] == "candidate"
+    assert sensitive_input in result.updated_state.conversation[-2]["content"]
+    json.dumps(result.updated_state.model_dump(mode="json"))
 
 
 def test_apply_decision_does_not_mutate_original_state() -> None:

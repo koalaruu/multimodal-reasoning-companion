@@ -2,10 +2,35 @@ const API_BASE_URL = (
   import.meta.env?.VITE_API_BASE_URL ?? "http://127.0.0.1:8000"
 ).replace(/\/$/, "");
 
+export async function extractCv({ file, signal }) {
+  const body = new FormData();
+  body.append("file", file);
+  const response = await fetch(`${API_BASE_URL}/v1/cv/extract`, {
+    method: "POST",
+    body,
+    signal,
+  });
+
+  if (!response.ok) {
+    let message = `CV extraction failed (${response.status}).`;
+    try {
+      const payload = await response.json();
+      if (payload?.detail?.message) message = payload.detail.message;
+    } catch {
+      // Keep the status-based message.
+    }
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
 export async function submitInterviewTurn({
   candidateInput,
   state,
   emotionalState,
+  cvText,
+  targetRole,
   signal,
 }) {
   const response = await fetch(`${API_BASE_URL}/v1/interview/turn`, {
@@ -15,6 +40,8 @@ export async function submitInterviewTurn({
       candidate_input: candidateInput,
       state,
       ...(emotionalState ? { emotional_state: emotionalState } : {}),
+      ...(cvText ? { cv_text: cvText } : {}),
+      ...(targetRole ? { target_role: targetRole } : {}),
     }),
     signal,
   });

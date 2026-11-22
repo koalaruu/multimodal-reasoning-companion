@@ -1,4 +1,13 @@
-"""Application service that orchestrates one interview turn."""
+"""Application service that orchestrates one interview turn.
+
+Groq owns the conversational turn: it decides what to ask next and how to say
+it, grounded in the uploaded CV, the conversation so far, and the candidate's
+proxy expression. Two things stay deterministic and local:
+
+- explicit control intents (stop, wait, meta questions), which must not be
+  reinterpreted by a model;
+- the session can only end when the candidate asks to stop.
+"""
 
 from __future__ import annotations
 
@@ -11,26 +20,40 @@ from backend.app.cognitive.state_engine import (
 from backend.app.perception.answer_quality import extract_answer_quality
 from backend.app.perception.text_signals import extract_explicit_signals
 from backend.app.reasoning.dialogue_policy import decide
-from backend.app.reasoning.llm_agent import (
-    GroqReplyGenerator,
-    ReplyGenerationResult,
-)
+from backend.app.reasoning.groq_interviewer import GroqInterviewer
 from backend.app.reasoning.response_generator import generate_local_reply
 from backend.app.schemas import (
+    ActionDecision,
+    DecisionReason,
+    DialogueAction,
     EmotionalState,
+    ReplyFallbackReason,
     ReplySource,
     SessionState,
     TurnResult,
 )
 
+# Actions whose wording must stay exactly as written: they express a control
+# intent the candidate already stated, so a model must not reinterpret them.
+_DETERMINISTIC_ACTIONS = frozenset(
+    {
+        DialogueAction.END_SESSION,
+        DialogueAction.WAIT,
+        DialogueAction.ANSWER_META_QUESTION,
+        DialogueAction.REQUEST_INPUT,
+    }
+)
+
+_MAX_CONVERSATION_MESSAGES = 24
+
 
 class InterviewService:
-    """Run the offline text pipeline without transport or network dependencies."""
+    """Run one interview turn with Groq as the conversational driver."""
 
     def __init__(
-        self, reply_generator: GroqReplyGenerator | None = None
+        self, interviewer: GroqInterviewer | None = None
     ) -> None:
-        self._reply_generator = reply_generator
+        self._interviewer = interviewer
 
     def process_turn(
         self,
@@ -52,28 +75,63 @@ class InterviewService:
             updated_state = update_emotional_state(
                 updated_state, emotional_state
             )
-        local_reply = generate_local_reply(decision)
-        generated_reply = (
-            self._reply_generator.generate(
-                decision=decision,
-                candidate_input=candidate_input,
-                local_reply=local_reply,
-                emotional_state=updated_state.emotional_state,
-                recent_replies=state.recent_replies,
-            )
-            if self._reply_generator is not None
-            else ReplyGenerationResult(
-                reply=local_reply,
-                source=ReplySource.LOCAL,
-            )
+
+        reply, source, fallback_reason = self._render(
+            state=updated_state,
+            candidate_input=candidate_input,
+            decision=decision,
         )
-        final_state = record_reply(updated_state, generated_reply.reply)
+
+        # Report who actually drove the turn. On fallback the reply text came
+        # from the deterministic decision, so that decision stays truthful.
+        if source == ReplySource.GROQ:
+            decision = ActionDecision(
+                action=DialogueAction.CONVERSE,
+                reason=DecisionReason.GROQ_LED_TURN,
+            )
+
+        conversation = [
+            *state.conversation,
+            {"role": "candidate", "content": candidate_input},
+            {"role": "interviewer", "content": reply},
+        ][-_MAX_CONVERSATION_MESSAGES:]
+
+        final_state = record_reply(updated_state, reply)
+        final_state = final_state.model_copy(
+            update={"conversation": conversation}
+        )
+
         return TurnResult(
             signals=signals,
             content_evidence=turn_evidence,
             decision=decision,
             updated_state=final_state,
-            reply=generated_reply.reply,
-            reply_source=generated_reply.source,
-            fallback_reason=generated_reply.fallback_reason,
+            reply=reply,
+            reply_source=source,
+            fallback_reason=fallback_reason,
         )
+
+    def _render(
+        self,
+        *,
+        state: SessionState,
+        candidate_input: str,
+        decision: ActionDecision,
+    ) -> tuple[str, ReplySource, ReplyFallbackReason | None]:
+        local_reply = generate_local_reply(decision)
+
+        if decision.action in _DETERMINISTIC_ACTIONS:
+            return local_reply, ReplySource.LOCAL, None
+
+        if self._interviewer is None or not self._interviewer.available:
+            return local_reply, ReplySource.LOCAL, None
+
+        result = self._interviewer.respond(
+            candidate_input=candidate_input,
+            conversation=state.conversation,
+            cv_text=state.cv_text,
+            target_role=state.target_role,
+            emotional_state=state.emotional_state,
+            local_reply=local_reply,
+        )
+        return result.reply, result.source, result.fallback_reason

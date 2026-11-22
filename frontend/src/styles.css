@@ -963,3 +963,58 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+.cv-upload .field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.cv-upload .field > span {
+  color: #5b6661;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.cv-upload input[type="text"] {
+  padding: 9px 11px;
+  border: 1px solid #d8dfdb;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 0.8rem;
+  background: #fff;
+}
+
+.cv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.cv-actions input[type="file"] {
+  font-size: 0.75rem;
+  max-width: 100%;
+}
+
+.cv-status {
+  margin: 10px 0 0;
+  color: #5b6661;
+  font-size: 0.74rem;
+}
+
+.cv-loaded {
+  margin-top: 8px;
+}
+
+.cv-preview {
+  margin: 6px 0 0;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: #f3f6f4;
+  color: #5b6661;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  max-height: 96px;
+  overflow: hidden;
+}

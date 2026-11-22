@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.main import create_app
-from backend.app.reasoning.llm_agent import GroqReplyGenerator
+from backend.app.reasoning.groq_interviewer import GroqInterviewer
 from backend.app.schemas import SessionState, SessionStatus
 from backend.app.service import InterviewService
 
@@ -175,7 +175,7 @@ def test_ended_session_remains_terminal_over_http(client: TestClient) -> None:
 
 def test_groq_failure_returns_200_with_observable_fallback() -> None:
     service = InterviewService(
-        GroqReplyGenerator(client=FailingClient())
+        GroqInterviewer(client=FailingClient())
     )
     with TestClient(create_app(service)) as client:
         response = client.post(

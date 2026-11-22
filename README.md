@@ -235,6 +235,27 @@ All frame processing occurs in the browser. Frames are not sent to FastAPI, Groq
 
 The emotional state is attached to `SessionState` and provided to the Groq LLM as advisory context with an explicit note that it is not a validated mental-state measurement. The LLM is instructed to adjust tone subtly if appropriate but never to state that the candidate is stressed, confused, or emotional. The dialogue policy remains deterministic; emotional state does not change the action selected.
 
+### Interview conversation and CV context
+
+Groq drives the interview conversation. Each turn it receives the dialogue so
+far, the uploaded CV text, the target role, and the advisory facial-expression
+signal, then chooses both what to ask and how to phrase it.
+
+Two things stay deterministic and outside the model:
+
+- **Ending the session.** Only an explicit candidate request can end it.
+- **Control intents.** Stop, wait, and meta questions are answered from fixed
+  local text so a model cannot reinterpret them.
+
+Upload a CV or job summary from the UI (`.pdf`, `.docx`, `.txt`, `.md`, max
+5 MiB). The backend extracts plain text and returns it to the browser; the
+browser stores it in the session and sends it with later turns. **No CV text is
+persisted on the server.** Scanned PDFs without a text layer are rejected with a
+clear error because they need OCR first.
+
+If no `GROQ_API_KEY` is configured, the app falls back to the deterministic
+text pipeline and says so in the transparency panel.
+
 ### Scientific basis and limitations
 
 The FACS AU-emotion mapping follows the documented combinations published by Ekman & Friesen:
