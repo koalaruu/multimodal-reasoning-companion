@@ -61,6 +61,10 @@ jobs:
         working-directory: frontend
         run: npm test
 
+      - name: Test opening session lifecycle in Chrome
+        working-directory: frontend
+        run: npm run test:opening
+
       - name: Test audio turn evaluator
         run: node --test eval/audio_evaluation.test.js
 
