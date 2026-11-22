@@ -165,6 +165,7 @@ def process_interview_turn(
     return service.process_turn(
         state=request_body.state,
         candidate_input=request_body.candidate_input,
+        emotional_state=request_body.emotional_state,
     )
 
 

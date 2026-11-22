@@ -16,6 +16,7 @@ class HealthResponse(DomainModel):
 class InterviewTurnRequest(DomainModel):
     candidate_input: str
     state: SessionState
+    emotional_state: EmotionalState | None = None
 
 
 class TranscriptionResponse(DomainModel):

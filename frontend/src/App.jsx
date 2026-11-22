@@ -62,6 +62,7 @@ export default function App() {
       const result = await submitInterviewTurn({
         candidateInput: answer,
         state: session,
+        emotionalState: vision.emotionalState,
       });
       setSession(result.updated_state);
       setLatestResult(result);

@@ -338,6 +338,64 @@ def test_logs_do_not_include_candidate_or_exception_text(
     assert private_text not in caplog.text
 
 
+def test_emotional_state_reaches_groq_context() -> None:
+    from backend.app.schemas import (
+        BlendshapeReading,
+        EmotionalState,
+        EmotionLabel,
+        VisionObservation,
+    )
+    from backend.app.perception.vision_analyzer import analyze
+
+    state = analyze(
+        VisionObservation(
+            face_available=True,
+            face_count=1,
+            blendshapes=[
+                BlendshapeReading(name="mouthSmileLeft", score=0.85),
+                BlendshapeReading(name="mouthSmileRight", score=0.8),
+                BlendshapeReading(name="cheekSquintLeft", score=0.7),
+                BlendshapeReading(name="cheekSquintRight", score=0.65),
+            ],
+        )
+    )
+    assert state.dominant_emotion == EmotionLabel.HAPPY
+
+    client = FakeClient(
+        response=response_with_content('{"reply":"How was it evaluated?"}')
+    )
+    result = InterviewService(
+        GroqReplyGenerator(client=client)
+    ).process_turn(
+        SessionState(session_id="vision-wired"),
+        "I built a classifier for support tickets.",
+        emotional_state=state,
+    )
+
+    contents = json.loads(client.chat.completions.calls[0]["messages"][1]["content"])
+    assert contents["emotional_state"]["dominant_emotion"] == "happy"
+    assert "advisory" in contents["emotional_state"]["note"].lower()
+    # The emotion must be carried forward on the session, not just this turn.
+    assert result.updated_state.emotional_state is not None
+    assert (
+        result.updated_state.emotional_state.dominant_emotion
+        == EmotionLabel.HAPPY
+    )
+
+
+def test_absent_emotional_state_is_not_sent_to_groq() -> None:
+    client = FakeClient(
+        response=response_with_content('{"reply":"How was it evaluated?"}')
+    )
+    InterviewService(GroqReplyGenerator(client=client)).process_turn(
+        SessionState(session_id="no-vision"),
+        "I built a classifier for support tickets.",
+    )
+
+    contents = json.loads(client.chat.completions.calls[0]["messages"][1]["content"])
+    assert "emotional_state" not in contents
+
+
 def test_service_keeps_local_decision_and_state_with_groq() -> None:
     state = SessionState(session_id="same-policy")
     candidate_input = "I built a classifier for support tickets."
