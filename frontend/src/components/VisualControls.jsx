@@ -1,3 +1,5 @@
+import { isCameraActive } from "../vision/visualObservation.js";
+
 const CUE_LABELS = {
   not_enabled: "Camera not enabled",
   loading_model: "Loading local face model",
@@ -16,7 +18,7 @@ export default function VisualControls({
   onEnable,
   onDisable,
 }) {
-  const cameraOn = observation.permission === "granted";
+  const cameraOn = isCameraActive(observation);
   const requesting = observation.permission === "requesting";
   const modelReady = observation.availability === "available";
 

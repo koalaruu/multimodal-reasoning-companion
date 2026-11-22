@@ -13,6 +13,14 @@ export function unavailableVisualObservation(permission = "idle", error = null) 
   };
 }
 
+export function isCameraActive(observation) {
+  return (
+    observation?.permission === "granted" &&
+    (observation.availability === "available" ||
+      observation.cue === "loading_model")
+  );
+}
+
 function roundedMilliseconds(value) {
   if (!Number.isFinite(value)) return null;
   return Math.round(Math.max(0, value) * 10) / 10;

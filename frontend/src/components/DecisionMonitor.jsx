@@ -176,8 +176,6 @@ export default function DecisionMonitor({
           measurements. They do not change the dialogue policy in this baseline.
         </p>
       </section>
-
-
       <section className="session-card">
         <h3>Session state</h3>
         <dl className="session-grid">

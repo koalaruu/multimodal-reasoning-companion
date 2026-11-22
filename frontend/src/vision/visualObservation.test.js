@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  isCameraActive,
   summarizeFaceLandmarkerResult,
   unavailableVisualObservation,
 } from "./visualObservation.js";
@@ -16,6 +17,22 @@ test("disabled vision never claims that a face was observed", () => {
     blendshapes: [],
     error: null,
   });
+});
+
+test("a released camera is retryable even when browser permission remains granted", () => {
+  const failedObservation = unavailableVisualObservation(
+    "granted",
+    "Model loading failed.",
+  );
+
+  assert.equal(isCameraActive(failedObservation), false);
+  assert.equal(
+    isCameraActive({
+      ...failedObservation,
+      cue: "loading_model",
+    }),
+    true,
+  );
 });
 
 test("an empty MediaPipe result reports no face", () => {
