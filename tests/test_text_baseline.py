@@ -125,6 +125,40 @@ def test_repeated_unclear_answers_stop_repeating_clarification(
     assert "different angle" in result.reply
 
 
+@pytest.mark.parametrize(
+    "question",
+    [
+        "fungsi chatbotnya apasih?",
+        "woi ini chatbot fungsinya apasih",
+        "ini buat apa sih",
+        "what is this for?",
+        "how does this work?",
+    ],
+)
+def test_meta_question_is_answered_not_redirected(
+    service: InterviewService,
+    question: str,
+) -> None:
+    result = service.process_turn(SessionState(session_id="meta"), question)
+
+    assert result.signals.meta_question_asked is True
+    assert result.decision.action == DialogueAction.ANSWER_META_QUESTION
+    assert result.decision.reason == DecisionReason.META_QUESTION_ANSWERED
+    assert "structured interview drill" in result.reply
+
+
+def test_real_answer_is_not_treated_as_meta_question(
+    service: InterviewService,
+) -> None:
+    result = service.process_turn(
+        SessionState(session_id="not-meta"),
+        "I built a classifier for support tickets and evaluated it with macro-F1.",
+    )
+
+    assert result.signals.meta_question_asked is False
+    assert result.decision.action != DialogueAction.ANSWER_META_QUESTION
+
+
 def test_minimal_answer_offers_concrete_choice(
     service: InterviewService,
 ) -> None:

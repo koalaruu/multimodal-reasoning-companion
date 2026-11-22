@@ -50,6 +50,11 @@ def decide(
             action=DialogueAction.OFFER_HINT,
             reason=DecisionReason.EXPLICIT_HINT_REQUEST,
         )
+    if signals.meta_question_asked:
+        return ActionDecision(
+            action=DialogueAction.ANSWER_META_QUESTION,
+            reason=DecisionReason.META_QUESTION_ANSWERED,
+        )
     if evidence.input_type == InputType.MISSING:
         return ActionDecision(
             action=DialogueAction.REQUEST_INPUT,

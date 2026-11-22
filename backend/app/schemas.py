@@ -21,6 +21,7 @@ class DialogueAction(str, Enum):
     CONTINUE_INTERVIEW = "continue_interview"
     REQUEST_INPUT = "request_input"
     REQUEST_CLARIFICATION = "request_clarification"
+    ANSWER_META_QUESTION = "answer_meta_question"
 
 
 
@@ -53,6 +54,7 @@ class DecisionReason(str, Enum):
     PROJECT_EXAMPLE_NEEDED = "project_example_needed"
     TOPIC_ADVANCED_WITHOUT_DETAIL = "topic_advanced_without_detail"
     MINIMAL_ANSWER_NEEDS_CHOICE = "minimal_answer_needs_choice"
+    META_QUESTION_ANSWERED = "meta_question_answered"
     CLASS_LEVEL_PERFORMANCE_MISSING = "class_level_performance_missing"
     EVALUATION_EVIDENCE_MISSING = "evaluation_evidence_missing"
     ANSWER_COMPLETE = "answer_complete"
@@ -86,6 +88,7 @@ class ExplicitSignals(DomainModel):
     hint_requested: bool = False
     thinking_time_requested: bool = False
     stop_requested: bool = False
+    meta_question_asked: bool = False
 
 
 class InputType(str, Enum):
