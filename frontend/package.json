@@ -9,6 +9,7 @@
     "test": "node --test",
     "test:opening": "node scripts/verifyOpeningLifecycle.js",
     "test:review": "node scripts/verifyReviewFreshness.js",
+    "test:messages": "node scripts/verifyMessageRecovery.js",
     "eval:vision": "node scripts/runVisionBenchmark.js",
     "preview": "vite preview"
   },

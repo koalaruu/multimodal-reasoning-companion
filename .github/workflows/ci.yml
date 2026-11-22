@@ -69,6 +69,10 @@ jobs:
         working-directory: frontend
         run: npm run test:review
 
+      - name: Test failed message recovery in Chrome
+        working-directory: frontend
+        run: npm run test:messages
+
       - name: Test audio turn evaluator
         run: node --test eval/audio_evaluation.test.js
 

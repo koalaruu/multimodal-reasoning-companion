@@ -75,7 +75,7 @@ The baseline supports seven actions:
 - `request_input`
 - `request_clarification`
 
-Every turn returns explicit signals; input type; answer relevance; project, evaluation-method, and evaluation-result evidence; the selected action and reason; updated session state; reply; `reply_source`; and optional `fallback_reason`. `SessionState` contains counters and control state only; it does not retain candidate text.
+Every turn returns explicit signals, answer evidence, the selected action and reason, updated session state, reply, `reply_source`, and optional `fallback_reason`. `SessionState` includes counters, active context, and the confirmed conversation (up to 24 messages). The browser holds it in memory and sends it with requests; it is not persisted server-side.
 
 The evidence extractor uses documented, precompiled lexical patterns rather than claiming general language understanding. It identifies concrete project descriptions, evaluation terminology, numeric results, and explicit controls. Irrelevant or unclear answers receive `request_clarification`. `wait`, `end_session`, and `request_input` are always rendered locally. `offer_hint`, `ask_followup`, `continue_interview`, and `request_clarification` are eligible for optional Groq wording.
 
@@ -229,6 +229,27 @@ Run `npm --prefix frontend run test:opening` for the isolated Chrome regression
 responses without calling FastAPI/Groq, and exercises pending/failure, pre-answer
 regeneration, active-session locks, and explicit reset. Install Chrome or set
 `CHROME_PATH` / `PUPPETEER_EXECUTABLE_PATH`, as with the vision benchmark runner.
+
+**Failed answers and retry:** a pending answer is shown as sending; a network,
+HTTP, or invalid-response failure marks it **Send failed** and restores its text
+to the editable answer box. **Retry answer** submits the current draft, updating
+that same unresolved bubble rather than appending another. Repeated failures
+still leave one unresolved message; concurrent submissions are blocked.
+
+Only a valid turn response updates the confirmed session and adds an interviewer
+reply. Failed attempts do not enter the history sent with later chat/review
+requests. Retry uses the current role, job description, CV, and confirmed state,
+not a cached payload from before context was edited or removed.
+A valid `local_fallback` turn is still a confirmed delivery, not a send failure.
+
+Retries are manual. A lost response may mean the backend/Groq already processed
+the attempt; retry can issue another provider call. This prevents duplicate UI
+messages, not exactly-once cloud execution. **New session** clears the failed
+message, draft, and confirmed history.
+
+Run `npm --prefix frontend run test:messages` for the isolated Chrome recovery
+regression (also in CI), covering failure types, edited retries, history/context
+safety, duplicate prevention, and reset without requiring a Groq key.
 
 Available controls include:
 
@@ -640,7 +661,7 @@ This is an integration benchmark, not evidence of demographic fairness, webcam r
 
 ## Privacy and scientific boundaries
 
-- Candidate text is processed in memory and is not stored in `SessionState` or default logs.
+- Candidate text and confirmed history are processed in memory and returned in `SessionState`; they are not persisted server-side or included in default logs.
 - Groq receives candidate text only when an API key is configured and the selected action is eligible. Review Groq's data handling terms before using real interview content.
 - Logs contain reply source and fallback reason; review failures may also include the exception class and HTTP status. Candidate text, prompts, response bodies, API keys, audio, and exception messages are excluded.
 - Voice-activity samples remain in browser memory and are never recorded by the timing path.

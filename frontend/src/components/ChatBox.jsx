@@ -8,6 +8,7 @@ export default function ChatBox({
   onSubmit,
   sending,
   openingBusy = false,
+  hasFailedAnswer = false,
   ended,
 }) {
   const messageListRef = useRef(null);
@@ -43,13 +44,18 @@ export default function ChatBox({
       <div className="message-list" ref={messageListRef} aria-live="polite" aria-busy={sending}>
         {messages.map((message) => (
           <article
-            className={`message ${message.role}`}
+            className={`message ${message.role} ${message.status ?? ""}`}
             key={message.id}
           >
             <span className="message-role">
               {message.role === "assistant" ? "Interviewer" : "You"}
             </span>
             <p>{message.text}</p>
+            {message.status === "failed" && (
+              <span className="message-delivery" role="status">
+                Send failed. Edit your answer below and retry; this message is not in the confirmed session.
+              </span>
+            )}
             {message.source && (
               <span className={`reply-source ${message.source}`}>
                 {message.source.replaceAll("_", " ")}
@@ -69,8 +75,14 @@ export default function ChatBox({
 
       <form className="answer-form" onSubmit={handleSubmit}>
         <label htmlFor="candidate-answer">Your answer</label>
+        {hasFailedAnswer && (
+          <p className="retry-note" id="retry-answer-note">
+            Edit this answer if needed, then retry. The failed message will be updated, not duplicated.
+          </p>
+        )}
         <textarea
           id="candidate-answer"
+          aria-describedby={hasFailedAnswer ? "retry-answer-note" : undefined}
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
           placeholder={
@@ -88,7 +100,7 @@ export default function ChatBox({
             type="submit"
             disabled={!draft.trim() || sending || openingBusy || ended}
           >
-            {openingBusy ? "Generating opening..." : sending ? "Sending..." : "Send answer"}
+            {openingBusy ? "Generating opening..." : sending ? "Sending..." : hasFailedAnswer ? "Retry answer" : "Send answer"}
           </button>
         </div>
       </form>
