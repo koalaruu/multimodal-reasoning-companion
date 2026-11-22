@@ -109,11 +109,21 @@ Open `http://127.0.0.1:5173`. To use a different backend URL, copy `frontend/.en
 
 Camera perception is optional. The browser downloads the versioned Face Landmarker model from Google on first use; the MediaPipe 1.2.3 runtime and Wasm are bundled by Vite.
 
-### Local speech-to-text
+### Speech-to-text
 
-`backend/requirements-stt.txt` installs Faster-Whisper 1.2.1 and pins PyAV below 19 because that Faster-Whisper release still calls the pre-19 `av.open` API. Defaults are CPU `int8`, the higher-capacity multilingual `small` model, automatic English/Indonesian language detection, and a 60-second decoded-audio limit:
+The project supports two STT providers selected by `STT_PROVIDER`:
+
+| Provider | Model | Audio stays on device? | Requires API key? |
+|----------|-------|----------------------|-------------------|
+| `local` (default) | Faster-Whisper `small` multilingual | Yes | No |
+| `groq` | Groq Whisper `whisper-large-v3-turbo` or `whisper-large-v3` | No — uploaded to Groq | Yes (`GROQ_API_KEY`) |
+
+When `STT_PROVIDER=groq` is set but `GROQ_API_KEY` is empty, the backend falls back to local Faster-Whisper with a warning rather than crashing.
+
+**Local configuration** (`backend/requirements-stt.txt` installs Faster-Whisper 1.2.1):
 
 ```powershell
+$env:STT_PROVIDER = "local"
 $env:WHISPER_MODEL = "small"
 $env:WHISPER_DEVICE = "cpu"
 $env:WHISPER_COMPUTE_TYPE = "int8"
@@ -121,11 +131,23 @@ $env:WHISPER_LANGUAGE = "auto"
 $env:WHISPER_MAX_AUDIO_SECONDS = "60"
 ```
 
-`WHISPER_LANGUAGE=auto` lets the multilingual model detect each clip. Set it to `en` or `id` to pin English or Indonesian when short or noisy recordings are misdetected. English-only models such as `base.en` are accepted only with `WHISPER_LANGUAGE=en`.
+**Groq configuration:**
 
-`small` requires more download size, memory, and CPU time than `base`; actual bilingual accuracy and latency still require a representative English/Indonesian benchmark. The pinned `base.en` evaluation below remains a historical English baseline and is not relabeled as evidence for `small`.
+```powershell
+$env:STT_PROVIDER = "groq"
+$env:GROQ_API_KEY = "your-key"
+$env:GROQ_STT_MODEL = "whisper-large-v3-turbo"
+$env:GROQ_STT_LANGUAGE = "auto"
+$env:GROQ_STT_TIMEOUT_SECONDS = "30"
+```
 
-The first transcription downloads model weights from Hugging Face and loads them lazily. Later requests use the local cache. Model weights may persist in the Hugging Face cache; candidate audio does not. The project reads process environment variables and does not silently load `.env`.
+`whisper-large-v3-turbo` is faster and cheaper ($0.04/hour) but has a higher documented WER (12%). `whisper-large-v3` is more accurate (WER 10.3%) but slower ($0.111/hour). Both support multilingual transcription.
+
+Groq free tier accepts files up to 25 MiB and bills a minimum of 10 seconds per request. Audio is uploaded to `api.groq.com`; transcript and language metadata are returned. The project reads process environment variables and does not silently load `.env`.
+
+Local Faster-Whisper downloads model weights from Hugging Face on first use and loads them lazily. Later requests use the local cache. Model weights may persist in the Hugging Face cache; candidate audio does not.
+
+`WHISPER_LANGUAGE=auto` lets the multilingual model detect each clip. Set it to `en` or `id` to pin English or Indonesian when short or noisy recordings are misdetected. The pinned `base.en` evaluation below remains a historical English baseline and is not relabeled as evidence for `small`.
 
 ### Optional Groq replies
 

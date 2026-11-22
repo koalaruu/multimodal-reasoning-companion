@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.api.routes import router
 from backend.app.perception.speech_to_text import (
     AudioTranscriber,
-    FasterWhisperTranscriber,
+    create_transcriber,
 )
 from backend.app.reasoning.llm_agent import GroqReplyGenerator
 from backend.app.service import InterviewService
@@ -40,7 +40,7 @@ def create_app(
     app.state.audio_transcriber = (
         audio_transcriber
         if audio_transcriber is not None
-        else FasterWhisperTranscriber.from_env()
+        else create_transcriber()
     )
     app.add_middleware(
         CORSMiddleware,

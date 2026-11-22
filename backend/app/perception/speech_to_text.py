@@ -1,4 +1,4 @@
-"""Local Faster-Whisper adapter with lazy model loading and bounded audio."""
+"""Speech-to-text adapters: local Faster-Whisper and cloud Groq Whisper."""
 
 from __future__ import annotations
 
@@ -200,6 +200,155 @@ class FasterWhisperTranscriber:
             processing_duration_ms=round((perf_counter() - started_at) * 1_000),
             model=self._model_name,
         )
+
+
+class GroqWhisperTranscriber:
+    """Cloud speech-to-text via Groq Whisper API.
+
+    Audio bytes are uploaded to Groq. Requires GROQ_API_KEY.
+    Falls back to local provider when no key is configured.
+    """
+
+    _SUPPORTED_MODELS = frozenset({
+        "whisper-large-v3",
+        "whisper-large-v3-turbo",
+    })
+    _MAX_FILE_BYTES = 25 * 1024 * 1024  # Groq free tier limit
+
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        model: str = "whisper-large-v3-turbo",
+        language: str | None = None,
+        timeout_seconds: float = 30.0,
+        client: Any | None = None,
+    ) -> None:
+        if not api_key.strip():
+            raise ValueError("Groq STT requires a non-empty GROQ_API_KEY")
+        normalized_model = model.strip()
+        if normalized_model not in self._SUPPORTED_MODELS:
+            supported = ", ".join(sorted(self._SUPPORTED_MODELS))
+            raise ValueError(f"model must be one of: {supported}")
+        if timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive")
+        normalized_language = _normalize_language(language)
+
+        self._api_key = api_key.strip()
+        self._model = normalized_model
+        self._language = normalized_language
+        self._timeout = timeout_seconds
+        self._client = client
+
+    @classmethod
+    def from_env(cls, env: dict[str, str] | None = None) -> Self:
+        source = os.environ if env is None else env
+        api_key = source.get("GROQ_API_KEY", "").strip()
+        if not api_key:
+            raise ValueError(
+                "Groq STT provider requires GROQ_API_KEY; "
+                "set STT_PROVIDER=local to use Faster-Whisper instead"
+            )
+        model = source.get("GROQ_STT_MODEL", "whisper-large-v3-turbo").strip()
+        language = source.get("GROQ_STT_LANGUAGE", source.get("WHISPER_LANGUAGE", "auto"))
+        raw_timeout = source.get("GROQ_STT_TIMEOUT_SECONDS", "30").strip()
+        try:
+            timeout_seconds = float(raw_timeout)
+        except ValueError as error:
+            raise ValueError("GROQ_STT_TIMEOUT_SECONDS must be a number") from error
+        return cls(
+            api_key=api_key,
+            model=model,
+            language=language,
+            timeout_seconds=timeout_seconds,
+        )
+
+    def _get_client(self) -> Any:
+        if self._client is not None:
+            return self._client
+        try:
+            from groq import Groq
+        except ImportError as error:
+            raise TranscriberUnavailableError(
+                "groq SDK is not installed"
+            ) from error
+        self._client = Groq(api_key=self._api_key, timeout=self._timeout, max_retries=0)
+        return self._client
+
+    def transcribe(self, audio: BinaryIO) -> TranscriptionResult:
+        started_at = perf_counter()
+        audio_bytes = audio.read()
+        if not audio_bytes:
+            raise NoSpeechDetectedError("audio body is empty")
+        if len(audio_bytes) > self._MAX_FILE_BYTES:
+            raise AudioTooLongError(
+                f"audio exceeds Groq {self._MAX_FILE_BYTES // (1024*1024)} MiB limit"
+            )
+
+        client = self._get_client()
+        try:
+            kwargs: dict[str, Any] = {
+                "file": ("recording.webm", audio_bytes),
+                "model": self._model,
+                "response_format": "verbose_json",
+                "temperature": 0.0,
+            }
+            if self._language is not None:
+                kwargs["language"] = self._language
+            response = client.audio.transcriptions.create(**kwargs)
+        except Exception as error:
+            msg = str(error).lower()
+            if "timeout" in msg or "timed out" in msg:
+                raise TranscriberUnavailableError("Groq STT request timed out") from error
+            raise TranscriberUnavailableError(
+                "Groq STT request failed"
+            ) from error
+
+        text = str(getattr(response, "text", "")).strip()
+        if not text:
+            raise NoSpeechDetectedError("no speech was detected by Groq")
+
+        language = str(getattr(response, "language", None) or self._language or "unknown")
+        probability = float(getattr(response, "language_probability", 0.0))
+        probability = min(1.0, max(0.0, probability))
+        duration = float(getattr(response, "duration", 0.0))
+
+        return TranscriptionResult(
+            text=text,
+            language=language,
+            language_probability=probability,
+            audio_duration_ms=round(duration * 1_000),
+            processing_duration_ms=round((perf_counter() - started_at) * 1_000),
+            model=f"groq/{self._model}",
+        )
+
+
+def create_transcriber(env: dict[str, str] | None = None) -> AudioTranscriber:
+    """Create the configured STT provider from environment.
+
+    STT_PROVIDER=local (default) -> FasterWhisperTranscriber
+    STT_PROVIDER=groq            -> GroqWhisperTranscriber (requires GROQ_API_KEY)
+
+    If STT_PROVIDER=groq but no API key is set, falls back to local
+    with a warning rather than crashing at startup.
+    """
+    source = os.environ if env is None else env
+    provider = source.get("STT_PROVIDER", "local").strip().lower()
+
+    if provider == "groq":
+        api_key = source.get("GROQ_API_KEY", "").strip()
+        if not api_key:
+            import warnings
+            warnings.warn(
+                "STT_PROVIDER=groq but GROQ_API_KEY is empty; "
+                "falling back to local Faster-Whisper",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return FasterWhisperTranscriber.from_env(source)
+        return GroqWhisperTranscriber.from_env(source)
+
+    return FasterWhisperTranscriber.from_env(source)
 
 
 def _segment_texts(segments: Iterable[Any]) -> Iterable[str]:
