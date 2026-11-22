@@ -53,7 +53,7 @@ export default function CvUpload({
         <input
           type="text"
           value={targetRole}
-          placeholder="e.g. Machine Learning Engineer Intern"
+          placeholder="e.g. Flutter Developer or Sales Associate"
           maxLength={200}
           onChange={(event) => onTargetRoleChange(event.target.value)}
         />

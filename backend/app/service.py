@@ -73,9 +73,12 @@ class InterviewService:
     ):
         """First question for this candidate, grounded in CV and posting."""
 
-        local_reply = (
-            "Tell me about an AI project you built. How did you evaluate it?"
-        )
+        if target_role and target_role.strip():
+            local_reply = f"Which experience would you like to discuss for the {target_role.strip()} role?"
+        elif job_description and job_description.strip():
+            local_reply = "Which experience would you like to discuss for this position?"
+        else:
+            local_reply = "What role are you preparing to interview for?"
         if self._interviewer is None or not self._interviewer.available:
             from backend.app.schemas import ReplySource
 

@@ -11,14 +11,14 @@ from backend.app.schemas import (
 
 _REPLIES = {
     (DialogueAction.OFFER_HINT, FollowupTopic.NONE): (
-        "Start by naming the metric you used and why it matched the problem."
+        "Start with one thing your work needed to achieve and how you checked it."
     ),
     (DialogueAction.WAIT, FollowupTopic.NONE): "Of course—take your time.",
     (DialogueAction.ASK_FOLLOWUP, FollowupTopic.EVALUATION_METHOD): (
-        "How did you evaluate the classifier?"
+        "How did you check whether your approach worked?"
     ),
     (DialogueAction.ASK_FOLLOWUP, FollowupTopic.CLASS_LEVEL_PERFORMANCE): (
-        "Which class was hardest to predict, and what did its results show?"
+        "What concrete outcome did your work achieve?"
     ),
     (DialogueAction.END_SESSION, FollowupTopic.NONE): (
         "Understood. We'll end the practice here."
@@ -27,19 +27,19 @@ _REPLIES = {
         "Please share your answer when you're ready."
     ),
     (DialogueAction.REQUEST_CLARIFICATION, FollowupTopic.NONE): (
-        "I couldn't connect that to the project yet. Please describe the AI "
-        "project you built and how you evaluated it."
+        "Please describe a concrete work or project example relevant to your "
+        "target role and how you checked your approach."
     ),
     (DialogueAction.CONTINUE_INTERVIEW, FollowupTopic.NONE): (
-        "Thank you. That covers the project and its evaluation."
+        "Thank you. That covers your example, how you checked it, and its outcome."
     ),
     (DialogueAction.GIVE_SPACE, FollowupTopic.NONE): (
         "No rush. Take the time you need, and continue when you're ready."
     ),
     (DialogueAction.ANSWER_META_QUESTION, FollowupTopic.NONE): (
-        "This is a structured interview drill, not an open chat. I ask about an "
-        "AI project you built and how you evaluated it, and I follow up until "
-        "you cover the project, the metric, and the result. Answer in your own "
+        "This is a structured interview drill, not an open chat. We explore "
+        "work or project examples relevant to your target role, how you checked "
+        "your approach, and the outcomes. Answer in your own "
         "words, ask for a hint with \"could I have a hint\", or stop with "
         "\"I'd like to stop the practice\"."
     ),
@@ -51,22 +51,22 @@ def generate_local_reply(decision: ActionDecision) -> str:
 
     if decision.reason == DecisionReason.CLARIFICATION_LIMIT_REACHED:
         return (
-            "Let's take a different angle. Pick any project you worked on, "
-            "name one thing it had to get right, and say how you checked it did."
+            "Let's take a different angle. Pick one work or project example, "
+            "name one thing it had to achieve, and say how you checked it did."
         )
     if decision.reason == DecisionReason.PROJECT_EXAMPLE_NEEDED:
         return (
-            "You named the metrics clearly. Now anchor them to one project: "
-            "which model was it, and what did those metrics show for that model?"
+            "Which concrete work or project example do those checks and "
+            "outcomes relate to?"
         )
     if decision.reason == DecisionReason.MINIMAL_ANSWER_NEEDS_CHOICE:
         return (
             "That's a short answer, so let me make it concrete. Pick one: "
-            "the project's goal, the data you used, or the metric you tracked."
+            "your goal, the approach you took, or how you checked your work."
         )
     if decision.reason == DecisionReason.TOPIC_ADVANCED_WITHOUT_DETAIL:
         return (
             "Let's move on and come back to that later. What would you change "
-            "about how you evaluated the model if you ran the project again?"
+            "about how you checked your approach if you did the work again?"
         )
     return _REPLIES[(decision.action, decision.followup_topic)]

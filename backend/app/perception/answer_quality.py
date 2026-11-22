@@ -21,7 +21,30 @@ def _compile_terms(terms: Sequence[str]) -> re.Pattern[str]:
 
 
 _PROJECT_ACTION = _compile_terms(
-    ("built", "created", "designed", "developed", "implemented", "trained")
+    (
+        "built",
+        "created",
+        "designed",
+        "developed",
+        "implemented",
+        "trained",
+        "launched",
+        "ran",
+        "handled",
+        "resolved",
+        "managed",
+        "membuat",
+        "membangun",
+        "merancang",
+        "mengembangkan",
+        "menerapkan",
+        "melatih",
+        "meluncurkan",
+        "menjalankan",
+        "menangani",
+        "menyelesaikan",
+        "mengelola",
+    )
 )
 _PROJECT_ARTIFACT = _compile_terms(
     (
@@ -32,10 +55,22 @@ _PROJECT_ARTIFACT = _compile_terms(
         "model",
         "pipeline",
         "system",
+        "website",
+        "campaign",
+        "complaint",
+        "prototype",
+        "workflow",
+        "aplikasi",
+        "situs web",
+        "kampanye",
+        "keluhan",
+        "prototipe",
+        "alur kerja",
+        "sistem",
     )
 )
-_PROJECT_CONTEXT = _compile_terms(("capstone", "portfolio", "project"))
-_PROJECT_OWNER = _compile_terms(("my", "our"))
+_PROJECT_CONTEXT = _compile_terms(("capstone", "portfolio", "project", "proyek"))
+_PROJECT_OWNER = _compile_terms(("my", "our", "saya", "kami"))
 _EVALUATION_METHOD = _compile_terms(
     (
         "accuracy",
@@ -53,6 +88,42 @@ _EVALUATION_METHOD = _compile_terms(
         "test set",
         "unseen examples",
         "validation set",
+        "tested",
+        "testing",
+        "unit test",
+        "unit tests",
+        "widget test",
+        "widget tests",
+        "integration test",
+        "integration tests",
+        "end-to-end test",
+        "end-to-end tests",
+        "usability test",
+        "usability tests",
+        "customer feedback",
+        "customer checks",
+        "customer survey",
+        "customer interviews",
+        "user feedback",
+        "user testing",
+        "a/b test",
+        "a/b testing",
+        "diuji",
+        "menguji",
+        "pengujian",
+        "uji unit",
+        "uji widget",
+        "uji integrasi",
+        "uji kegunaan",
+        "uji pengguna",
+        "umpan balik pelanggan",
+        "umpan balik pengguna",
+        "survei pelanggan",
+        "wawancara pelanggan",
+        "dievaluasi",
+        "evaluasi",
+        "diukur",
+        "akurasi",
     )
 )
 _MACRO_F1 = _compile_terms(("macro-f1", "macro f1", "macro f-score"))
@@ -74,11 +145,34 @@ _AI_TOPIC = _compile_terms(
         "project",
     )
 )
+# Quantities need a percentage, a score cue, or a timed improvement. Bare
+# decimals/integers can be versions, ticket identifiers, or years, not outcomes.
+_NUMBER = r"\d+(?:[.,]\d+)?"
+_SCORE = r"(?:0[.,]\d+|1(?:[.,]0+)?)"
+_TIME_UNIT = r"(?:ms|milliseconds?|s|seconds?|detik|milidetik)"
+_TIME_METRIC = (
+    r"(?:latency|(?:screen |page |app )?load(?:ing)? time|response time|latensi|"
+    r"waktu (?:muat|pemuatan|respons|respon|tunggu))"
+)
+_TIME_CHANGE = (
+    r"(?:reduced|decreased|improved|cut|lowered|dropped|fell|"
+    r"menurunkan|mengurangi|berkurang|turun|dipangkas|dikurangi|diturunkan)"
+)
+_TIMED_OUTCOME = (
+    rf"(?:from|dari)\s+{_NUMBER}\s*{_TIME_UNIT}\s+"
+    rf"(?:to|menjadi|ke)\s+{_NUMBER}\s*{_TIME_UNIT}(?!\w)"
+    rf"|(?:by|to|sebesar|menjadi)\s+{_NUMBER}\s*{_TIME_UNIT}(?!\w)"
+)
 _EVALUATION_RESULT = re.compile(
-    r"(?<!\w)\d+(?:\.\d+)?%(?!\w)"
-    r"|(?<!\w)0\.\d+(?!\w)"
-    r"|(?<!\w)(?:achieved|obtained|reached|scored)\s+"
-    r"(?:[a-z-]+\s+){0,2}\d+(?:\.\d+)?%?(?!\w)"
+    rf"(?<![\w.,]){_NUMBER}\s*(?:%|percent|persen)(?!\w)"
+    rf"|(?<!\w)(?:macro-f1|macro f1|macro f-score|f1|accuracy|auc|"
+    rf"precision|recall|akurasi)\s*(?:(?:score|was|is|of|skor|sebesar|"
+    rf"adalah)\s+|[=:]\s*){{0,2}}{_SCORE}(?!\w|[.,]\d)"
+    rf"|(?<!\w)(?:achieved|obtained|reached|scored|mencapai|memperoleh)"
+    rf"\s+(?:(?:a\s+)?(?:score|skor)(?:\s+(?:of|sebesar))?\s+)?"
+    rf"{_SCORE}(?!\w|[.,]\d)"
+    rf"|(?<!\w)(?:{_TIME_CHANGE}\s+{_TIME_METRIC}|"
+    rf"{_TIME_METRIC}\s+{_TIME_CHANGE})\s+(?:{_TIMED_OUTCOME})"
 )
 
 # Bare acknowledgements. These carry no project evidence, so repeating the
@@ -127,7 +221,7 @@ def extract_answer_quality(
     text: str,
     signals: ExplicitSignals,
 ) -> ContentEvidence:
-    """Extract observable content evidence without judging the candidate."""
+    """Extract lexical cues, not semantic competence or verified achievements."""
 
     input_type = _classify_input(text, signals)
     if input_type != InputType.ANSWER:

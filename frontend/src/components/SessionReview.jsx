@@ -32,8 +32,8 @@ export default function SessionReview({ session, disabled, onReviewLoaded }) {
         <p className="eyebrow">After the practice</p>
         <h2>Session review</h2>
         <p className="panel-subtitle">
-          What you covered is derived from your own answers. Suggestions are
-          written by the model from the same facts.
+          General answer cues: a work example, how you checked it, and an outcome.
+          Groq tailors advice to your role and job description; this is not a skills score.
         </p>
       </header>
 
@@ -76,7 +76,7 @@ export default function SessionReview({ session, disabled, onReviewLoaded }) {
 
           <div className="review-columns">
             <div>
-              <h3>Covered</h3>
+              <h3>Observed answer cues</h3>
               {review.covered.length > 0 ? (
                 <ul className="review-list covered">
                   {review.covered.map((item) => (
@@ -84,11 +84,11 @@ export default function SessionReview({ session, disabled, onReviewLoaded }) {
                   ))}
                 </ul>
               ) : (
-                <p className="cv-status">Nothing established yet.</p>
+                <p className="cv-status">No general answer cues detected yet.</p>
               )}
             </div>
             <div>
-              <h3>Missing</h3>
+              <h3>Not detected yet</h3>
               {review.missing.length > 0 ? (
                 <ul className="review-list missing">
                   {review.missing.map((item) => (
@@ -96,14 +96,14 @@ export default function SessionReview({ session, disabled, onReviewLoaded }) {
                   ))}
                 </ul>
               ) : (
-                <p className="cv-status">Nothing missing.</p>
+                <p className="cv-status">All three general answer cues were detected.</p>
               )}
             </div>
           </div>
 
           {review.suggestions.length > 0 && (
             <div>
-              <h3>Suggestions</h3>
+              <h3>Advice for your interview</h3>
               <ul className="review-list">
                 {review.suggestions.map((item) => (
                   <li key={item}>{item}</li>
