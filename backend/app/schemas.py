@@ -179,6 +179,7 @@ class SessionState(DomainModel):
     last_action: DialogueAction | None = None
     clarifications_asked: int = Field(default=0, ge=0)
     recent_replies: list[str] = Field(default_factory=list)
+    cumulative_evidence: ContentEvidence | None = None
     emotional_state: EmotionalState | None = None
 
     @field_validator("session_id")

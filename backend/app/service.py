@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from backend.app.cognitive.state_engine import apply_decision, record_reply
+from backend.app.cognitive.state_engine import (
+    apply_decision,
+    merge_evidence,
+    record_reply,
+)
 from backend.app.perception.answer_quality import extract_answer_quality
 from backend.app.perception.text_signals import extract_explicit_signals
 from backend.app.reasoning.dialogue_policy import decide
@@ -26,9 +30,15 @@ class InterviewService:
         self, state: SessionState, candidate_input: str
     ) -> TurnResult:
         signals = extract_explicit_signals(candidate_input)
-        content_evidence = extract_answer_quality(candidate_input, signals)
-        decision = decide(state, signals, content_evidence)
+        turn_evidence = extract_answer_quality(candidate_input, signals)
+        cumulative_evidence = merge_evidence(
+            state.cumulative_evidence, turn_evidence
+        )
+        decision = decide(state, signals, cumulative_evidence)
         updated_state = apply_decision(state, decision)
+        updated_state = updated_state.model_copy(
+            update={"cumulative_evidence": cumulative_evidence}
+        )
         local_reply = generate_local_reply(decision)
         generated_reply = (
             self._reply_generator.generate(
@@ -47,7 +57,7 @@ class InterviewService:
         final_state = record_reply(updated_state, generated_reply.reply)
         return TurnResult(
             signals=signals,
-            content_evidence=content_evidence,
+            content_evidence=turn_evidence,
             decision=decision,
             updated_state=final_state,
             reply=generated_reply.reply,

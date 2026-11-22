@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from backend.app.schemas import (
     ActionDecision,
+    ContentEvidence,
     DecisionReason,
     DialogueAction,
     EmotionalState,
@@ -45,6 +46,48 @@ def apply_decision(state: SessionState, decision: ActionDecision) -> SessionStat
                 + int(decision.action == DialogueAction.REQUEST_CLARIFICATION)
             ),
             "last_action": decision.action,
+        }
+    )
+
+
+def merge_evidence(
+    previous: ContentEvidence | None,
+    current: ContentEvidence,
+) -> ContentEvidence:
+    """Accumulate positive evidence across turns.
+
+    A candidate who names the project in one turn and the metric in the next
+    has answered the question. Evidence is only ever added, never revoked:
+    a later vague turn must not erase what was already established.
+    """
+
+    if previous is None:
+        return current
+
+    return current.model_copy(
+        update={
+            "project_described": (
+                previous.project_described or current.project_described
+            ),
+            "evaluation_method_mentioned": (
+                previous.evaluation_method_mentioned
+                or current.evaluation_method_mentioned
+            ),
+            "evaluation_result_mentioned": (
+                previous.evaluation_result_mentioned
+                or current.evaluation_result_mentioned
+            ),
+            "macro_f1_mentioned": (
+                previous.macro_f1_mentioned or current.macro_f1_mentioned
+            ),
+            "class_imbalance_mentioned": (
+                previous.class_imbalance_mentioned
+                or current.class_imbalance_mentioned
+            ),
+            "class_level_performance_mentioned": (
+                previous.class_level_performance_mentioned
+                or current.class_level_performance_mentioned
+            ),
         }
     )
 

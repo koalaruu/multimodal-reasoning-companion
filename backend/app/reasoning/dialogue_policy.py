@@ -112,6 +112,7 @@ def _content_decision(
         evidence.macro_f1_mentioned
         and evidence.class_imbalance_mentioned
         and not evidence.class_level_performance_mentioned
+        and state.followups_asked < _MAX_HINTS
     ):
         return ActionDecision(
             action=DialogueAction.ASK_FOLLOWUP,
