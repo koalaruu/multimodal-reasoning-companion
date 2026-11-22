@@ -134,7 +134,7 @@ def test_clarification_counter_increments_on_clarification(
     assert result.updated_state.clarifications_asked == 1
 
 
-def test_stuck_session_escalates_from_hint_to_end(
+def test_stuck_session_escalates_from_hint_to_advance(
     service: InterviewService,
 ) -> None:
     state = SessionState(session_id="escalate")
@@ -143,18 +143,45 @@ def test_stuck_session_escalates_from_hint_to_end(
         "from the business trade-off."
     )
     actions = []
-    for _ in range(5):
+    for _ in range(6):
         result = service.process_turn(state, answer)
         actions.append(result.decision.action)
         state = result.updated_state
 
-    assert actions == [
+    assert actions[:4] == [
         DialogueAction.REQUEST_CLARIFICATION,
         DialogueAction.OFFER_HINT,
         DialogueAction.OFFER_HINT,
         DialogueAction.CONTINUE_INTERVIEW,
-        DialogueAction.END_SESSION,
     ]
+    # The session must never end unless the candidate asks to stop.
+    assert DialogueAction.END_SESSION not in actions
+    assert state.status.value == "active"
+
+
+def test_counters_reset_after_topic_advances(service: InterviewService) -> None:
+    state = SessionState(
+        session_id="reset",
+        clarifications_asked=2,
+        hints_offered=2,
+    )
+    answer = "I used accuracy as the metric for the model."
+
+    result = service.process_turn(state, answer)
+
+    assert result.decision.action == DialogueAction.CONTINUE_INTERVIEW
+    assert result.updated_state.clarifications_asked == 0
+    assert result.updated_state.hints_offered == 0
+
+
+def test_candidate_alone_can_end_the_session(service: InterviewService) -> None:
+    result = service.process_turn(
+        SessionState(session_id="user-stop"),
+        "I'd like to stop the practice here.",
+    )
+
+    assert result.decision.action == DialogueAction.END_SESSION
+    assert result.updated_state.status.value == "ended"
 
 
 def test_paraphrased_complete_answer_extracts_all_required_evidence(

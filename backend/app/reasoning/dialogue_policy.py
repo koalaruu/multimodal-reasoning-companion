@@ -66,11 +66,6 @@ def decide(
         )
         if repeats:
             if state.hints_offered >= _MAX_HINTS:
-                if state.last_action == DialogueAction.CONTINUE_INTERVIEW:
-                    return ActionDecision(
-                        action=DialogueAction.END_SESSION,
-                        reason=DecisionReason.ANSWER_COMPLETE,
-                    )
                 return ActionDecision(
                     action=DialogueAction.CONTINUE_INTERVIEW,
                     reason=DecisionReason.TOPIC_ADVANCED_WITHOUT_DETAIL,

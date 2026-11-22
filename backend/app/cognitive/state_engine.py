@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from backend.app.schemas import (
     ActionDecision,
+    DecisionReason,
     DialogueAction,
     EmotionalState,
     SessionState,
@@ -14,6 +15,10 @@ from backend.app.schemas import (
 def apply_decision(state: SessionState, decision: ActionDecision) -> SessionState:
     """Return the next state without mutating the supplied state object."""
 
+    advances_topic = decision.reason in {
+        DecisionReason.TOPIC_ADVANCED_WITHOUT_DETAIL,
+        DecisionReason.ANSWER_COMPLETE,
+    }
     return state.model_copy(
         update={
             "status": (
@@ -22,12 +27,20 @@ def apply_decision(state: SessionState, decision: ActionDecision) -> SessionStat
                 else state.status
             ),
             "turn_index": state.turn_index + 1,
-            "hints_offered": state.hints_offered
-            + int(decision.action == DialogueAction.OFFER_HINT),
+            "hints_offered": (
+                0
+                if advances_topic
+                else state.hints_offered
+                + int(decision.action == DialogueAction.OFFER_HINT)
+            ),
             "followups_asked": state.followups_asked
             + int(decision.action == DialogueAction.ASK_FOLLOWUP),
-            "clarifications_asked": state.clarifications_asked
-            + int(decision.action == DialogueAction.REQUEST_CLARIFICATION),
+            "clarifications_asked": (
+                0
+                if advances_topic
+                else state.clarifications_asked
+                + int(decision.action == DialogueAction.REQUEST_CLARIFICATION)
+            ),
             "last_action": decision.action,
         }
     )
