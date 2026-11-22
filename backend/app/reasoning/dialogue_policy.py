@@ -19,6 +19,9 @@ from backend.app.schemas import (
 # and offers a concrete hint instead.
 _MAX_CLARIFICATIONS = 2
 
+# After this many hints the policy stops hinting and moves the interview on.
+_MAX_HINTS = 2
+
 
 def decide(
     state: SessionState,
@@ -52,14 +55,39 @@ def decide(
             action=DialogueAction.REQUEST_INPUT,
             reason=DecisionReason.INPUT_MISSING,
         )
-    if (
-        evidence.relevance in {AnswerRelevance.IRRELEVANT, AnswerRelevance.UNCLEAR}
-        and state.clarifications_asked >= _MAX_CLARIFICATIONS
-    ):
-        return ActionDecision(
-            action=DialogueAction.OFFER_HINT,
-            reason=DecisionReason.CLARIFICATION_LIMIT_REACHED,
+    decision = _content_decision(state, evidence)
+    if decision.action == DialogueAction.REQUEST_CLARIFICATION:
+        repeats = (
+            state.clarifications_asked >= _MAX_CLARIFICATIONS
+            or (
+                decision.reason == DecisionReason.PROJECT_EXAMPLE_NEEDED
+                and state.clarifications_asked >= 1
+            )
         )
+        if repeats:
+            if state.hints_offered >= _MAX_HINTS:
+                if state.last_action == DialogueAction.CONTINUE_INTERVIEW:
+                    return ActionDecision(
+                        action=DialogueAction.END_SESSION,
+                        reason=DecisionReason.ANSWER_COMPLETE,
+                    )
+                return ActionDecision(
+                    action=DialogueAction.CONTINUE_INTERVIEW,
+                    reason=DecisionReason.TOPIC_ADVANCED_WITHOUT_DETAIL,
+                )
+            return ActionDecision(
+                action=DialogueAction.OFFER_HINT,
+                reason=DecisionReason.CLARIFICATION_LIMIT_REACHED,
+            )
+    return decision
+
+
+def _content_decision(
+    state: SessionState,
+    evidence: ContentEvidence,
+) -> ActionDecision:
+    """Content-based decision before the clarification-repeat guard."""
+
     if evidence.relevance == AnswerRelevance.IRRELEVANT:
         return ActionDecision(
             action=DialogueAction.REQUEST_CLARIFICATION,
@@ -81,6 +109,11 @@ def decide(
             followup_topic=FollowupTopic.CLASS_LEVEL_PERFORMANCE,
         )
     if not evidence.project_described:
+        if evidence.evaluation_method_mentioned:
+            return ActionDecision(
+                action=DialogueAction.REQUEST_CLARIFICATION,
+                reason=DecisionReason.PROJECT_EXAMPLE_NEEDED,
+            )
         return ActionDecision(
             action=DialogueAction.REQUEST_CLARIFICATION,
             reason=DecisionReason.PROJECT_EVIDENCE_MISSING,

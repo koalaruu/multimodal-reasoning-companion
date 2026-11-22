@@ -44,4 +44,14 @@ def generate_local_reply(decision: ActionDecision) -> str:
             "Let's take a different angle. Pick any project you worked on, "
             "name one thing it had to get right, and say how you checked it did."
         )
+    if decision.reason == DecisionReason.PROJECT_EXAMPLE_NEEDED:
+        return (
+            "You named the metrics clearly. Now anchor them to one project: "
+            "which model was it, and what did those metrics show for that model?"
+        )
+    if decision.reason == DecisionReason.TOPIC_ADVANCED_WITHOUT_DETAIL:
+        return (
+            "Let's move on and come back to that later. What would you change "
+            "about how you evaluated the model if you ran the project again?"
+        )
     return _REPLIES[(decision.action, decision.followup_topic)]

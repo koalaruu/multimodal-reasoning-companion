@@ -50,6 +50,8 @@ class DecisionReason(str, Enum):
     ANSWER_UNCLEAR = "answer_unclear"
     PROJECT_EVIDENCE_MISSING = "project_evidence_missing"
     CLARIFICATION_LIMIT_REACHED = "clarification_limit_reached"
+    PROJECT_EXAMPLE_NEEDED = "project_example_needed"
+    TOPIC_ADVANCED_WITHOUT_DETAIL = "topic_advanced_without_detail"
     CLASS_LEVEL_PERFORMANCE_MISSING = "class_level_performance_missing"
     EVALUATION_EVIDENCE_MISSING = "evaluation_evidence_missing"
     ANSWER_COMPLETE = "answer_complete"

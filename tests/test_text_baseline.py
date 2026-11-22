@@ -134,6 +134,29 @@ def test_clarification_counter_increments_on_clarification(
     assert result.updated_state.clarifications_asked == 1
 
 
+def test_stuck_session_escalates_from_hint_to_end(
+    service: InterviewService,
+) -> None:
+    state = SessionState(session_id="escalate")
+    answer = (
+        "I used precision, recall, F1, and AUC-ROC and picked a threshold "
+        "from the business trade-off."
+    )
+    actions = []
+    for _ in range(5):
+        result = service.process_turn(state, answer)
+        actions.append(result.decision.action)
+        state = result.updated_state
+
+    assert actions == [
+        DialogueAction.REQUEST_CLARIFICATION,
+        DialogueAction.OFFER_HINT,
+        DialogueAction.OFFER_HINT,
+        DialogueAction.CONTINUE_INTERVIEW,
+        DialogueAction.END_SESSION,
+    ]
+
+
 def test_paraphrased_complete_answer_extracts_all_required_evidence(
     service: InterviewService,
 ) -> None:
@@ -154,7 +177,7 @@ def test_paraphrased_complete_answer_extracts_all_required_evidence(
     assert result.decision.action == DialogueAction.CONTINUE_INTERVIEW
 
 
-def test_evaluation_without_project_requests_project_evidence(
+def test_evaluation_without_project_requests_project_example(
     service: InterviewService,
 ) -> None:
     result = service.process_turn(
@@ -165,7 +188,22 @@ def test_evaluation_without_project_requests_project_evidence(
     assert result.content_evidence.relevance == AnswerRelevance.RELEVANT
     assert result.content_evidence.project_described is False
     assert result.decision.action == DialogueAction.REQUEST_CLARIFICATION
-    assert result.decision.reason == DecisionReason.PROJECT_EVIDENCE_MISSING
+    assert result.decision.reason == DecisionReason.PROJECT_EXAMPLE_NEEDED
+    assert "anchor them to one project" in result.reply
+
+
+def test_metric_without_project_requests_project_example(
+    service: InterviewService,
+) -> None:
+    result = service.process_turn(
+        SessionState(session_id="no-metric"),
+        "I used accuracy as the metric for the model.",
+    )
+
+    assert result.content_evidence.project_described is False
+    assert result.content_evidence.evaluation_method_mentioned is True
+    assert result.decision.action == DialogueAction.REQUEST_CLARIFICATION
+    assert result.decision.reason == DecisionReason.PROJECT_EXAMPLE_NEEDED
 
 
 def test_stop_has_precedence_over_wait_and_hint(service: InterviewService) -> None:

@@ -60,7 +60,13 @@ Rules:
   them first.
 - For ask_followup: ask one focused follow-up question related to followup_topic.
 - For continue_interview: acknowledge briefly and continue naturally.
+  When the reason is topic_advanced_without_detail, do not claim the previous
+  answer was complete. Say the point is noted and ask one forward-looking
+  question about the same AI/ML project.
 - For request_clarification: ask for a relevant project-and-evaluation answer without judging the candidate.
+  When the reason is project_example_needed, the candidate already named their
+  metrics. Acknowledge that and ask for one concrete project plus what those
+  metrics showed. Do not ask them to list metrics again.
 - If emotional_state is provided, treat it as advisory context only. Do not
   state that the candidate is stressed, confused, or emotional. Adjust tone
   subtly if appropriate, but never mention the emotional_state field.
