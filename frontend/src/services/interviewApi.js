@@ -82,7 +82,9 @@ export async function submitInterviewTurn({
     body: JSON.stringify({
       candidate_input: candidateInput,
       state,
-      ...(emotionalState ? { emotional_state: emotionalState } : {}),
+      // Explicit null clears stale facial evidence; the backend only clears
+      // when the field is present.
+      emotional_state: emotionalState ?? null,
       ...(cvText !== undefined ? { cv_text: cvText } : {}),
       ...(targetRole !== undefined ? { target_role: targetRole } : {}),
       ...(jobDescription !== undefined ? { job_description: jobDescription } : {}),

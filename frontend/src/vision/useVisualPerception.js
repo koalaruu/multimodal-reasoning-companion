@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createLocalFaceLandmarker } from "./faceLandmarkerRuntime.js";
 import {
+  freshEmotionalState,
   summarizeFaceLandmarkerResult,
   unavailableVisualObservation,
 } from "./visualObservation.js";
@@ -8,7 +9,6 @@ import { analyzeVision } from "../services/interviewApi.js";
 
 const INFERENCE_INTERVAL_MS = 200;
 const VISION_UPLOAD_INTERVAL_MS = 1000;
-
 
 const CAMERA_CONSTRAINTS = {
   audio: false,
@@ -44,6 +44,16 @@ export default function useVisualPerception() {
   const resourcesRef = useRef(null);
   const operationRef = useRef(0);
   const lastUploadRef = useRef(0);
+  // Facial evidence is timestamped so an old reading cannot outlive the camera.
+  const emotionalRef = useRef(null);
+  const analysisRef = useRef(null);
+
+  const clearEmotionalState = useCallback(() => {
+    analysisRef.current?.abort();
+    analysisRef.current = null;
+    emotionalRef.current = null;
+    setEmotionalState(null);
+  }, []);
 
   const releaseResources = useCallback((target = resourcesRef.current) => {
     if (!target) return;
@@ -66,11 +76,13 @@ export default function useVisualPerception() {
   const disableCamera = useCallback(() => {
     operationRef.current += 1;
     releaseResources();
+    clearEmotionalState();
     setObservation(unavailableVisualObservation());
-  }, [releaseResources]);
+  }, [releaseResources, clearEmotionalState]);
 
   const enableCamera = useCallback(async () => {
     releaseResources();
+    clearEmotionalState();
     const operation = operationRef.current + 1;
     operationRef.current = operation;
     const resources = {
@@ -83,6 +95,9 @@ export default function useVisualPerception() {
     let permission = "requesting";
     setObservation(unavailableVisualObservation(permission));
 
+    const isCurrent = () =>
+      operation === operationRef.current && resourcesRef.current === resources;
+
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
         const unsupported = new Error("Camera API unavailable");
@@ -93,7 +108,7 @@ export default function useVisualPerception() {
       resources.stream = await navigator.mediaDevices.getUserMedia(
         CAMERA_CONSTRAINTS,
       );
-      if (operation !== operationRef.current) {
+      if (!isCurrent()) {
         releaseResources(resources);
         return;
       }
@@ -111,7 +126,7 @@ export default function useVisualPerception() {
       });
 
       resources.landmarker = await createLocalFaceLandmarker();
-      if (operation !== operationRef.current) {
+      if (!isCurrent()) {
         releaseResources(resources);
         return;
       }
@@ -126,10 +141,7 @@ export default function useVisualPerception() {
       let lastInferenceAt = -INFERENCE_INTERVAL_MS;
       let lastVideoTime = -1;
       const render = (timestamp) => {
-        if (
-          operation !== operationRef.current ||
-          resourcesRef.current !== resources
-        ) {
+        if (!isCurrent()) {
           return;
         }
 
@@ -144,26 +156,40 @@ export default function useVisualPerception() {
             lastVideoTime = video.currentTime;
             const startedAt = performance.now();
             const result = resources.landmarker.detectForVideo(video, timestamp);
-            setObservation(
-              summarizeFaceLandmarkerResult(result, {
-                inferenceMs: performance.now() - startedAt,
-                observedAtMs: Date.now(),
-              }),
-            );
+            const obs = summarizeFaceLandmarkerResult(result, {
+              inferenceMs: performance.now() - startedAt,
+              observedAtMs: Date.now(),
+            });
+            setObservation(obs);
 
             if (
-              timestamp - lastUploadRef.current >= VISION_UPLOAD_INTERVAL_MS
+              timestamp - lastUploadRef.current >= VISION_UPLOAD_INTERVAL_MS &&
+              !analysisRef.current
             ) {
               lastUploadRef.current = timestamp;
-              const obs = summarizeFaceLandmarkerResult(result, {
-                inferenceMs: performance.now() - startedAt,
-                observedAtMs: Date.now(),
-              });
-              analyzeVision({ observation: obs }).then(setEmotionalState).catch(() => {});
+              const controller = new AbortController();
+              analysisRef.current = controller;
+              analyzeVision({ observation: obs, signal: controller.signal })
+                .then((value) => {
+                  // A response from a stopped camera must never reach the session.
+                  if (!isCurrent() || controller.signal.aborted) return;
+                  const entry = { value, atMs: Date.now() };
+                  emotionalRef.current = entry;
+                  setEmotionalState(freshEmotionalState(entry));
+                })
+                .catch(() => {
+                  // Camera loss or a rejected request simply leaves the signal absent.
+                })
+                .finally(() => {
+                  if (analysisRef.current === controller) {
+                    analysisRef.current = null;
+                  }
+                });
             }
           } catch {
             operationRef.current += 1;
             releaseResources(resources);
+            clearEmotionalState();
             setObservation(
               unavailableVisualObservation(
                 "granted",
@@ -181,6 +207,7 @@ export default function useVisualPerception() {
     } catch (error) {
       if (operation !== operationRef.current) return;
       releaseResources(resources);
+      clearEmotionalState();
       setObservation(
         unavailableVisualObservation(
           error?.name === "NotAllowedError" ? "denied" : permission,
@@ -188,15 +215,39 @@ export default function useVisualPerception() {
         ),
       );
     }
-  }, [releaseResources]);
+  }, [releaseResources, clearEmotionalState]);
+
+  // Returns facial evidence only while the camera runs and the reading is recent.
+  const currentEmotionalState = useCallback(() => {
+    if (!resourcesRef.current) return null;
+    const entry = emotionalRef.current;
+    const value = freshEmotionalState(entry);
+    if (!value) {
+      if (entry) {
+        emotionalRef.current = null;
+        setEmotionalState(null);
+      }
+      return null;
+    }
+    return value;
+  }, []);
 
   useEffect(
     () => () => {
       operationRef.current += 1;
+      analysisRef.current?.abort();
+      analysisRef.current = null;
       releaseResources();
     },
     [releaseResources],
   );
 
-  return { observation, emotionalState, videoRef, enableCamera, disableCamera };
+  return {
+    observation,
+    emotionalState,
+    currentEmotionalState,
+    videoRef,
+    enableCamera,
+    disableCamera,
+  };
 }

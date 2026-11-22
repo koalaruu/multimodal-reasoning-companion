@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  freshEmotionalState,
   isCameraActive,
   summarizeFaceLandmarkerResult,
   unavailableVisualObservation,
@@ -96,4 +97,23 @@ test("invalid timing metadata is never reported as measured latency", () => {
 
   assert.equal(observation.inference_ms, null);
   assert.equal(observation.observed_at_ms, null);
+});
+
+test("recent facial evidence is returned unchanged", () => {
+  const value = { dominant_emotion: "fearful", confidence: 0.6 };
+  const entry = { value, atMs: 1_000 };
+
+  assert.deepEqual(freshEmotionalState(entry, 3_000, 4_000), value);
+});
+
+test("facial evidence older than the limit is treated as absent", () => {
+  const entry = { value: { dominant_emotion: "fearful" }, atMs: 1_000 };
+
+  assert.equal(freshEmotionalState(entry, 6_000, 4_000), null);
+});
+
+test("missing or untimestamped facial evidence is absent, not neutral", () => {
+  assert.equal(freshEmotionalState(null), null);
+  assert.equal(freshEmotionalState({ value: {}, atMs: null }), null);
+  assert.equal(freshEmotionalState({ value: null, atMs: 1_000 }), null);
 });
