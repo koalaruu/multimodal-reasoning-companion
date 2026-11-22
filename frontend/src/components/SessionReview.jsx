@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchSessionReview } from "../services/interviewApi.js";
 
 const FALLBACK_MESSAGES = {
@@ -7,22 +7,48 @@ const FALLBACK_MESSAGES = {
   malformed_output: "Groq returned a review that did not match the expected format.",
 };
 
-export default function SessionReview({ session, disabled, onReviewLoaded }) {
-  const [review, setReview] = useState(null);
+function sameReviewInputs(left, right) {
+  return left.session_id === right.session_id &&
+    left.turn_index === right.turn_index &&
+    left.conversation === right.conversation &&
+    left.cumulative_evidence === right.cumulative_evidence &&
+    left.cv_text === right.cv_text &&
+    left.target_role === right.target_role &&
+    left.job_description === right.job_description;
+}
+
+export default function SessionReview({ session, disabled, turnPending = false, onReviewLoaded }) {
+  const [snapshot, setSnapshot] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const requestRef = useRef(null);
+  const review = snapshot?.result;
+  const outdated = !!snapshot && (turnPending || !sameReviewInputs(snapshot.session, session));
+
+  useEffect(() => () => requestRef.current?.abort(), []);
 
   async function handleReview() {
+    if (requestRef.current || disabled || turnPending) return;
+    const controller = new AbortController();
+    const requestedSession = session;
+    requestRef.current = controller;
     setBusy(true);
     setError("");
     try {
-      const result = await fetchSessionReview({ state: session });
-      setReview(result);
+      const result = await fetchSessionReview({
+        state: requestedSession,
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
+      setSnapshot({ result, session: requestedSession });
       onReviewLoaded?.(result);
     } catch (reviewError) {
-      setError(reviewError.message);
+      if (!controller.signal.aborted) setError(reviewError.message);
     } finally {
-      setBusy(false);
+      if (requestRef.current === controller) {
+        requestRef.current = null;
+        if (!controller.signal.aborted) setBusy(false);
+      }
     }
   }
 
@@ -41,20 +67,34 @@ export default function SessionReview({ session, disabled, onReviewLoaded }) {
         type="button"
         className="primary-button"
         onClick={handleReview}
-        disabled={busy || disabled}
+        disabled={busy || disabled || turnPending}
       >
-        {busy ? "Reviewing…" : "Review this session"}
+        {busy ? "Reviewing…" : outdated ? "Update review" : "Review this session"}
       </button>
 
       {disabled && (
         <p className="cv-status">Answer at least two questions first.</p>
       )}
+      {turnPending && !review && (
+        <p className="cv-status" role="status">Wait for the pending answer to finish before reviewing.</p>
+      )}
       {error && <p className="vision-error">{error}</p>}
 
       {review && (
         <div className="review-body">
+          <p className={`review-freshness ${outdated ? "outdated" : "current"}`} role="status">
+            {outdated ? "Outdated review" : "Current review"} · {review.turns} completed turn{review.turns === 1 ? "" : "s"}
+          </p>
+          {outdated && (
+            <p className="review-stale-notice" role="status">
+              {turnPending
+                ? "A new answer is being processed."
+                : "Your completed answers or application context have changed."}{" "}
+              This review describes an earlier snapshot. Select Update review
+              {turnPending ? " after the answer finishes" : ""} to review the latest completed answers and context.
+            </p>
+          )}
           <p className="cv-status">
-            {review.turns} turn{review.turns === 1 ? "" : "s"} ·{" "}
             {review.review_source === "groq"
               ? "suggestions from Groq"
               : review.review_source === "local_fallback"
@@ -65,7 +105,7 @@ export default function SessionReview({ session, disabled, onReviewLoaded }) {
             <p className="fallback-notice" role="status">
               {FALLBACK_MESSAGES[review.fallback_reason] ?? "Groq could not complete this review."}{" "}
               Showing local suggestions; coverage still comes from your answers.
-              You can select “Review this session” to try again.
+              Use the review button to try again.
             </p>
           )}
           {review.review_source === "local" && (

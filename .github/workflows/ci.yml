@@ -65,6 +65,10 @@ jobs:
         working-directory: frontend
         run: npm run test:opening
 
+      - name: Test review freshness in Chrome
+        working-directory: frontend
+        run: npm run test:review
+
       - name: Test audio turn evaluator
         run: node --test eval/audio_evaluation.test.js
 

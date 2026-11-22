@@ -364,7 +364,8 @@ export default function App() {
           <SessionReview
             key={session.session_id}
             session={sessionWithContext}
-            disabled={(session.turn_index ?? 0) < 2 || sending}
+            disabled={(session.turn_index ?? 0) < 2}
+            turnPending={sending}
           />
           <DecisionMonitor
             result={latestResult}

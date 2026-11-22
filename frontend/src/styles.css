@@ -211,6 +211,10 @@ dd { margin: 0; color: #495673; font-size: 0.74rem; font-weight: 600; overflow-w
 
 .session-review { margin-bottom: 24px; padding: 24px; }
 .session-review .review-body { display: grid; gap: 22px; margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--border); }
+.review-freshness { margin: 0; font-size: 0.72rem; font-weight: 600; }
+.review-freshness.current { color: #328069; }
+.review-freshness.outdated { color: #9a712f; }
+.review-stale-notice { margin: 0; padding: 12px 14px; border: 1px solid #efdfbe; border-radius: 8px; color: #8b682e; background: #fff9ed; font-size: 0.73rem; line-height: 1.7; }
 .session-review h3, .monitor-panel h3 { margin: 0 0 15px; color: #55637e; font-size: 0.7rem; font-weight: 650; letter-spacing: 0.03em; text-transform: uppercase; }
 .review-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .review-list { margin: 0; padding-left: 18px; color: #69768e; font-size: 0.78rem; line-height: 1.9; }
