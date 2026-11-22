@@ -331,6 +331,41 @@ Target status: **PASS**. The runner writes `eval/results/stt-latest.json` with h
 
 Three clean English public fixtures are integration evidence only. They do not establish performance on interview answers, microphones, accents, background noise, multilingual speech, or unseen datasets. A larger consented speaker-disjoint corpus is required before publishing portfolio accuracy claims.
 
+### Local vision benchmark
+
+`eval/vision_cases.json` defines two calibration and four identity-disjoint held-out cases covering zero, one, and two expected faces. Five public images are fetched at runtime and verified against exact byte sizes and SHA-256 hashes. Four fixtures are referenced by the Apache-2.0 MediaPipe test-data BUILD file pinned to commit `9ce52340ad12b1be04bff9e6ae5d323c9855f80c`; the Grace Hopper portrait is a public-domain U.S. Navy work from Wikimedia Commons.
+
+Run from `frontend/`:
+
+```powershell
+# Contract, checksums, split, and runtime-version validation; no browser or download
+npm run eval:vision -- --validate-only
+
+# Report-only real browser benchmark
+npm run eval:vision
+
+# Fail when the fixed held-out target is missed
+npm run eval:vision -- --enforce-target
+```
+
+The runner starts a temporary Vite server and local Chrome through `puppeteer-core`, then invokes the production MediaPipe runtime and versioned Face Landmarker model. Set `CHROME_PATH` when Chrome is not installed in its standard location. Assets and model data stay in browser memory; only aggregate face counts, landmark counts, timing, runtime metadata, and safe failure categories are written to ignored `eval/results/vision-latest.json`.
+
+The target was fixed before the first held-out run: 100% runtime success, exact face-count accuracy, face-detection rate, and repeated-run stability; zero no-face false positives; and warm inference p95 at most 200 ms. The observed MediaPipe 1.2.3 CPU/Wasm baseline in headless Chrome 157 on this Windows AMD64 workstation was:
+
+| Split/case | Expected/detected faces | Median inference | Case p95 |
+|---|---:|---:|---:|
+| Calibration Obama portrait | 1 / 1 | 49.6 ms | 53.4 ms |
+| Calibration cat | 0 / 0 | 10.2 ms | 10.6 ms |
+| Held-out Grace Hopper portrait | 1 / 1 | 44.0 ms | 46.5 ms |
+| Held-out Mozart painting | 1 / 1 | 39.8 ms | 42.5 ms |
+| Held-out burger | 0 / 0 | 8.3 ms | 9.5 ms |
+| Held-out two-face composite | 2 / 2 | 61.0 ms | 61.9 ms |
+| **Held-out aggregate** | **4 / 4 cases exact** | **42.5 ms p50** | **61.3 ms** |
+
+Model initialization took 831.2 ms. Target status: **PASS**.
+
+This is an integration benchmark, not evidence of demographic fairness, webcam robustness, expression validity, or real-world generalization. It uses three face identities, one painting, two no-face controls, and a synthetic two-face composite. `IMAGE` mode exercises the same packaged runtime, model, thresholds, face limit, and observation contract as production, but it does not measure `VIDEO` tracking, camera capture, motion, lighting changes, occlusion, or blendshape correctness. A larger consented identity-disjoint video corpus is required before visual observations can influence policy.
+
 ## Privacy and scientific boundaries
 
 - Candidate text is processed in memory and is not stored in `SessionState` or default logs.

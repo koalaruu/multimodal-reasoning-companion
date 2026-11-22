@@ -53,6 +53,10 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Validate vision benchmark manifest
+        working-directory: frontend
+        run: npm run eval:vision -- --validate-only
+
       - name: Run frontend tests
         working-directory: frontend
         run: npm test
