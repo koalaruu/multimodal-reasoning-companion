@@ -27,12 +27,8 @@ export default function VisualControls({
     <section className="vision-panel" aria-labelledby="vision-heading">
       <div className="vision-summary">
         <div>
-          <p className="eyebrow">Optional local vision</p>
-          <h2 id="vision-heading">Observable face landmarks</h2>
-          <p>
-            MediaPipe runs in this browser and reports face count plus raw facial
-            coefficients. It does not infer mood, stress, focus, or suitability.
-          </p>
+          <p className="eyebrow">Local perception</p>
+          <h2 id="vision-heading">Camera &amp; expression</h2>
         </div>
         <button
           className={cameraOn ? "secondary-button" : "primary-button"}
@@ -52,7 +48,14 @@ export default function VisualControls({
         <div className="camera-preview">
           <video ref={videoRef} autoPlay muted playsInline aria-label="Local camera preview" />
           {!cameraOn && (
-            <div className="camera-placeholder">Camera preview stays local</div>
+            <div className="camera-placeholder">
+              <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                <rect x="8" y="14" width="26" height="22" rx="5" />
+                <path d="m34 21 7-4v16l-7-4 M18 14l3-5h8l3 5" />
+              </svg>
+              <strong>Your camera is off</strong>
+              <span>Enable it for optional facial cues</span>
+            </div>
           )}
         </div>
 
@@ -65,12 +68,14 @@ export default function VisualControls({
               </strong>
               <small>
                 {modelReady
-                  ? "Advisory perception only; dialogue policy is unchanged."
+                  ? "Advisory facial cues, not a mental-state assessment."
                   : "Text and audio remain available."}
               </small>
             </div>
           </div>
 
+          <details className="sensor-details">
+            <summary>Landmarks &amp; inference details</summary>
           <dl className="vision-metrics">
             <div>
               <dt>Faces</dt>
@@ -97,6 +102,7 @@ export default function VisualControls({
               <p>Available after exactly one face is detected.</p>
             )}
           </div>
+          </details>
 
           {emotionalState && emotionalState.face_available && (
             <div className="emotion-readout">
@@ -151,8 +157,7 @@ export default function VisualControls({
         </p>
       )}
       <p className="observation-note">
-        Video frames are not uploaded. Blendshape coefficients are sent to the
-        local backend for FACS proxy mapping; the MediaPipe runtime is bundled.
+        Video stays on this device. Facial coefficients are sent to the local API.
       </p>
     </section>
   );

@@ -197,7 +197,23 @@ Browser access is restricted to the local Vite origins `http://localhost:5173` a
 
 ## Text interview UI
 
-The React client keeps session state and conversation history in memory only. It provides:
+The React client keeps session state and conversation history in memory only.
+
+The responsive dashboard separates the workflow into three views:
+
+- **Practice room:** conversation, editable answer, opening generation, and
+  optional camera/voice controls.
+- **Application context:** target role, job posting, CV upload, and Strict/Coach
+  selection. Generate an opening here to return to practice with that context.
+- **Session insights:** review (available after two turns) and the decision,
+  evidence, and session-state monitor.
+
+Navigation preserves drafts, conversation, and sensor streams. Sensor status
+remains visible in the header; use the practice controls to stop sensors, or
+**New session** to stop them and clear context, chat, and the previous review.
+Chat auto-scroll is contained inside the conversation, not the whole page.
+
+Available controls include:
 
 - a text interview flow across multiple turns;
 - an evidence and deterministic policy decision monitor;

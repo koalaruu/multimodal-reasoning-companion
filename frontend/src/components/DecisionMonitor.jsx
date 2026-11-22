@@ -172,8 +172,8 @@ export default function DecisionMonitor({
           </div>
         </dl>
         <p className="observation-note">
-          Face landmarks are observable coefficients, not emotion or attention
-          measurements. They do not change the dialogue policy in this baseline.
+          Face landmarks are observable coefficients, not direct measurements
+          of emotion, attention, or hiring suitability.
         </p>
       </section>
       <section className="session-card">
