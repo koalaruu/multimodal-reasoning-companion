@@ -173,7 +173,7 @@ def process_interview_turn(
     response_model=VisionAnalyzeResponse,
     tags=["vision"],
 )
-def analyze_vision_endpoint(
+async def analyze_vision_endpoint(
     request_body: VisionAnalyzeRequest,
 ) -> VisionAnalyzeResponse:
     """Map blendshape readings to a proxy emotional state via FACS rules.

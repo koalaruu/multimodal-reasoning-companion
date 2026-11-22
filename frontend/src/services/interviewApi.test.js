@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { transcribeAudio } from "./interviewApi.js";
+import { analyzeVision, transcribeAudio } from "./interviewApi.js";
 
 const originalFetch = globalThis.fetch;
 
@@ -69,4 +69,82 @@ test("transcription rejects malformed success payloads", async () => {
     }),
     /invalid transcription response/,
   );
+});
+
+test("vision analysis derives face_available from the observation shape", async () => {
+  let request;
+  globalThis.fetch = async (url, options) => {
+    request = { url, options };
+    return new Response(
+      JSON.stringify({
+        emotional_state: {
+          dominant_emotion: "neutral",
+          confidence: 0,
+          emotion_scores: {},
+          activated_aus: [],
+          face_available: false,
+        },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  };
+
+  await analyzeVision({
+    observation: {
+      availability: "available",
+      permission: "granted",
+      cue: "no_face",
+      face_count: 0,
+      inference_ms: 17.1,
+      observed_at_ms: 1795317614545,
+      blendshapes: [],
+      top_blendshapes: [],
+      error: null,
+    },
+  });
+
+  const body = JSON.parse(request.options.body);
+  assert.equal(body.face_available, false);
+  assert.equal(body.face_count, 0);
+  assert.ok(!("top_blendshapes" in body));
+  assert.ok(!("availability" in body));
+});
+
+test("vision analysis marks face_available true for a single detected face", async () => {
+  let request;
+  globalThis.fetch = async (url, options) => {
+    request = { url, options };
+    return new Response(
+      JSON.stringify({
+        emotional_state: {
+          dominant_emotion: "happy",
+          confidence: 0.7,
+          emotion_scores: { happy: 0.7 },
+          activated_aus: ["AU6", "AU12"],
+          face_available: true,
+        },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  };
+
+  await analyzeVision({
+    observation: {
+      availability: "available",
+      permission: "granted",
+      cue: "face_detected",
+      face_count: 1,
+      inference_ms: 12.5,
+      observed_at_ms: 1795317614545,
+      blendshapes: [{ name: "mouthSmileLeft", score: 0.8 }],
+      top_blendshapes: [{ name: "mouthSmileLeft", score: 0.8 }],
+      error: null,
+    },
+  });
+
+  const body = JSON.parse(request.options.body);
+  assert.equal(body.face_available, true);
+  assert.deepEqual(body.blendshapes, [
+    { name: "mouthSmileLeft", score: 0.8 },
+  ]);
 });

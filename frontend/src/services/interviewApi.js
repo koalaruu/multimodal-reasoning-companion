@@ -65,7 +65,10 @@ export async function analyzeVision({ observation, signal }) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      face_available: observation.face_available,
+      face_available:
+        observation.face_available ??
+        (observation.availability === "available" &&
+          observation.face_count > 0),
       face_count: observation.face_count,
       inference_ms: observation.inference_ms,
       observed_at_ms: observation.observed_at_ms,
