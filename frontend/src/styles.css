@@ -781,6 +781,88 @@ dd {
   font-size: 0.76rem;
 }
 
+.emotion-readout {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e3e8e5;
+  min-width: 0;
+}
+
+.emotion-readout h3 {
+  margin: 0;
+  color: #7a8580;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.emotion-dominant {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.emotion-label {
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.emotion-dominant small {
+  color: #7a8580;
+  font-size: 0.72rem;
+}
+
+.activated-aus {
+  margin: 0;
+  color: #5b6661;
+  font-size: 0.72rem;
+}
+
+.emotion-bar-row {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr) 2.5rem;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.72rem;
+}
+
+.emotion-bar-row > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+
+.emotion-bar {
+  height: 5px;
+  border-radius: 3px;
+  background: #e3e8e5;
+  overflow: hidden;
+}
+
+.emotion-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: #3f6f5a;
+  transition: width 180ms ease-out;
+}
+
+.emotion-bar-row small {
+  color: #7a8580;
+  text-align: right;
+}
+
+.emotion-disclaimer {
+  margin: 0;
+  color: #7a8580;
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
 .observation-note {
   margin: 14px 0 0;
   color: #7a8580;
