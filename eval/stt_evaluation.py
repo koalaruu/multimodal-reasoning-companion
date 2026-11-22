@@ -69,8 +69,14 @@ class AudioAsset(_ContractModel):
         if Path(self.filename).name != self.filename:
             raise ValueError("asset filename must not contain a path")
         parsed = urlparse(self.url)
+        if parsed.scheme == "file":
+            # Locally recorded clips stay in the working tree and are never
+            # redistributed; only the digest is committed.
+            if not parsed.path:
+                raise ValueError("file asset url must include a path")
+            return self
         if parsed.scheme != "https" or not parsed.netloc:
-            raise ValueError("asset url must use https")
+            raise ValueError("asset url must use https or file")
         return self
 
 
@@ -179,6 +185,17 @@ class PublicAudioCache:
 
         part_path = path.with_suffix(path.suffix + ".part")
         part_path.unlink(missing_ok=True)
+
+        if urlparse(asset.url).scheme == "file":
+            source_path = Path(urlparse(asset.url).path.lstrip("/"))
+            if not source_path.is_file():
+                raise ValueError(f"{asset.id}: local asset is missing")
+            if not _asset_matches(source_path, asset):
+                raise ValueError(
+                    f"{asset.id}: local asset does not match its declared digest"
+                )
+            return source_path
+
         request = Request(asset.url, headers={"User-Agent": "stt-eval-v1"})
         try:
             with urlopen(request, timeout=60) as source, part_path.open("wb") as target:
